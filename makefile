@@ -28,7 +28,7 @@ CUDADIR = /opt/apps/cuda/5.5/
 # The following are the definitions for each target individually.
 
 steadyStatePennesLaser.ptx:   steadyStatePennesLaser.cu
-	$(CUDADIR)/bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20  -I$(CUDADIR)/cusplibrary/ $<
+	$(CUDADIR)/bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   $<
 
 tags:
 	ctags -R  --langmap=c++:+.cu $(MATLABROOT) . 

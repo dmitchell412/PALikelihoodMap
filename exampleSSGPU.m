@@ -2,112 +2,48 @@ clear all
 close all
 format shortg
 
-P = phantom('Modified Shepp-Logan',200);
-imshow(P)
+% create npixel^3 image
+npixel   = 256;
+materialID = 10.*phantom3d('Modified Shepp-Logan',npixel);
+imshow(materialID(:,:,npixel/2))
 
+% query the device
+deviceInfo = gpuDevice(1);
+numSMs = deviceInfo.MultiprocessorCount;
 % % GPU must be reset on out of bounds errors
 % reset(gpuDevice(1))
 
 %%diary
-npixel   = 256*256;
-nslice   = 5;
-necho    = 16;
-nspecies = 2;
-echospacing = 2.;
-imagingfreq = 128.;
+ntissue = 4;
+perfusion  = [5.e01 , 4.e01 , 3.e01, 6.e01];
+conduction = [5.e-1 , 4.e-1 , 3.e-1, 6.e-1];
+mueff      = [5.e02 , 4.e02 , 3.e02, 6.e02];
+nsource    = 10;
+xloc       = linspace(1,nsource ,nsource );
+yloc       = linspace(1,nsource ,nsource );
+zloc       = linspace(1,nsource ,nsource );
+u_artery   = 37.;
+c_blood    = 3480.;
+power      = 10.;
 
-% inialized data
-h_fid     = complex(repmat(linspace(1,necho,necho)',1,npixel),-repmat((linspace(2,necho+1,necho).^2)',1,npixel));
-
+% initialize data on host
+h_temperature     = zeros(npixel,npixel,npixel);
+spacingX = 1.0;
+spacingY = 1.0;
+spacingZ = 1.0;
 % perform ONE transfer from host to device
-d_fid     = gpuArray( h_fid );
+d_temperature  = gpuArray( h_temperature  );
 
-% build the matrix on the device AFTER the data has been transferred
-PronyRHS    = reshape( d_fid(nspecies+1:necho  ,:)                             ,necho-nspecies,   1    ,npixel);
-PronyMatrix = reshape([d_fid(nspecies  :necho-1,:),d_fid(nspecies-1:necho-2,:)],necho-nspecies,nspecies,npixel);
-
-% batch compute initial beta
-
-d_ppm     = gpuArray( zeros(npixel,nslice,nspecies) );
-d_t2star  = gpuArray( zeros(npixel,nslice,nspecies) );
-d_T1map   = gpuArray( zeros(npixel,nslice,nspecies) );
-d_phase   = gpuArray( zeros(npixel,nslice,nspecies) );
-
-rhs = [
-  h_fid( 3);
-  h_fid( 4);
-  h_fid( 5);
-  h_fid( 6);
-  h_fid( 7);
-  h_fid( 8);
-  h_fid( 9);
-  h_fid(10);
-  h_fid(11);
-  h_fid(12);
-  h_fid(13);
-  h_fid(14);
-  h_fid(15);
-  h_fid(16);
-      ];
-
-matrix = [
- h_fid( 2) ,h_fid( 1);
- h_fid( 3) ,h_fid( 2);
- h_fid( 4) ,h_fid( 3);
- h_fid( 5) ,h_fid( 4);
- h_fid( 6) ,h_fid( 5);
- h_fid( 7) ,h_fid( 6);
- h_fid( 8) ,h_fid( 7);
- h_fid( 9) ,h_fid( 8);
- h_fid(10) ,h_fid( 9);
- h_fid(11) ,h_fid(10);
- h_fid(12) ,h_fid(11);
- h_fid(13) ,h_fid(12);
- h_fid(14) ,h_fid(13);
- h_fid(15) ,h_fid(14);
-          ];
-
-normaleqnmatrix =  matrix'*matrix;
-normaleqnrhs    = -matrix'*rhs;
-disp('Prony Matlab:');
-disp([normaleqnmatrix ,normaleqnrhs ]);
-
-betanormaleqn  = normaleqnmatrix \normaleqnrhs    
-
-% get matlab solution
-u_in = zeros(necho,1 );
-u_in(1) = 1; % make a unit impulse whose length is same as x
-[alphaprony betaprony] = prony(h_fid(:,1),nspecies-1,nspecies );
-[alphastmcb betastmcb] = stmcbdf(h_fid(:,1),u_in,nspecies-1,nspecies,5,betaprony );
-disp('Prony;Stmcb');
-disp([alphaprony,betaprony;alphastmcb,betastmcb] );
-
-[alphapronyzero betapronyzero] = prony(h_fid(:,1),0,nspecies );
-[ filter( 1, betapronyzero     , h_fid(:,1) ), filter( 1, betaprony         , h_fid(:,1) )]
-
-lambda  = roots([1; betanormaleqn  ]  )
 %%  compile and run
-StmcbKernelptx = parallel.gpu.CUDAKernel('StmcbKernel.ptx', 'StmcbKernel.cu');
+ssptx = parallel.gpu.CUDAKernel('steadyStatePennesLaser.ptx', 'steadyStatePennesLaser.cu');
 threadsPerBlock = 256;
-StmcbKernelptx.ThreadBlockSize=[threadsPerBlock  1];
-blocksPerGrid = (npixel  + threadsPerBlock - 1) / threadsPerBlock;
-StmcbKernelptx.GridSize=[ceil(blocksPerGrid)  1];
-[d_ppm, d_t2star, d_T1map,d_phase, ] = feval(StmcbKernelptx,real(d_fid),imag(d_fid), d_ppm, d_t2star, d_T1map,d_phase, echospacing,imagingfreq,necho,nspecies,npixel);
-%% [d_ppm(1:40)', d_t2star(1:40)', d_T1map(1:40)' ,d_phase(1:40)'] 
+ssptx.ThreadBlockSize=[threadsPerBlock  1];
+ssptx.GridSize=[numSMs*32               1];
+[d_temperature ] = feval(ssptx,ntissue,materialID,perfusion,conduction, mueff, nsource, power ,xloc,yloc,zloc, u_artery , c_blood, d_temperature,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
 
-%% TODO  add total variation regression
-%% TODO  %% build CS Kernel
-%% TODO  StmcbTVKernelptx = parallel.gpu.CUDAKernel('StmcbTVKernel.ptx', 'StmcbTVKernel.cu');
-%% TODO  
-%% TODO  for iii = 1:Niter
-%% TODO    % perform a least square solve for the alpha and beta
-%% TODO    [d_alpha, d_beta ] = feval(StmcbTVKernelptx,real(d_fid),imag(d_fid), d_alpha, d_beta, echospacing,imagingfreq,necho,nspecies,npixel);
-%% TODO    % solve L1 subproblem for spatial regulariation of alpha beta 
-%% TODO    w = l1subproblem([d_alpha, d_beta ],mu,lambda);
-%% TODO    % update lagrange multipliers 
-%% TODO   lambda =  lambda - 1/mu*(x-w);
-%% TODO  end
 
-% exit in order for NVVP to complete profiling
-% exit
+%%  transfer device to host
+h_temperature  = gather( d_temperature  );
 
+%%  plot
+imagesc(h_temperature(:,:,100);

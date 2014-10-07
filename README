@@ -1,0 +1,13 @@
+
+Usage
+=====
+$ make
+/opt/apps/cuda/5.5//bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   steadyStatePennesLaser.cu
+
+
+
+Design Pattern
+==============
+      grid stride loop design pattern, 1-d grid
+      http://devblogs.nvidia.com/parallelforall/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
+         - By using a loop, you can support any problem size even if it exceeds the largest grid size your CUDA device supports. Moreover, you can limit the number of blocks you use to tune performance.
