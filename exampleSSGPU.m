@@ -46,4 +46,4 @@ ssptx.GridSize=[numSMs*32               1];
 h_temperature  = gather( d_temperature  );
 
 %%  plot
-imagesc(h_temperature(:,:,100);
+%imagesc(h_temperature(:,:,100));
