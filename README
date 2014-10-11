@@ -4,6 +4,14 @@ Usage
 $ make
 /opt/apps/cuda/5.5//bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   steadyStatePennesLaser.cu
 
+(from MATLAB)
+>> exampleSSGPU
+.
+.
+iter 500
+Elapsed time is 204.292927 seconds.
+
+
 
 
 Design Pattern
