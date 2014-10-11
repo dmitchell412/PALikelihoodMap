@@ -4,7 +4,7 @@ format shortg
 
 % create npixel^3 image
 npixel   = 256;
-materialID = 10.*phantom3d('Modified Shepp-Logan',npixel);
+materialID = 10*int32(phantom3d('Modified Shepp-Logan',npixel));
 imshow(materialID(:,:,npixel/2))
 
 % query the device
@@ -34,12 +34,14 @@ spacingZ = 1.0;
 % perform ONE transfer from host to device
 d_temperature  = gpuArray( h_temperature  );
 
+R1 = .001 ; % 1mm
+R2 = .1   ; % 100mm
 %%  compile and run
 ssptx = parallel.gpu.CUDAKernel('steadyStatePennesLaser.ptx', 'steadyStatePennesLaser.cu');
 threadsPerBlock = 256;
 ssptx.ThreadBlockSize=[threadsPerBlock  1];
 ssptx.GridSize=[numSMs*32               1];
-[d_temperature ] = feval(ssptx,ntissue,materialID,perfusion,conduction, mueff, nsource, power ,xloc,yloc,zloc, u_artery , c_blood, d_temperature,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
+[d_temperature ] = feval(ssptx,ntissue,materialID,perfusion,conduction, mueff, R1, R2, nsource, power ,xloc,yloc,zloc, u_artery ,u_artery , c_blood, d_temperature,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
 
 
 %%  transfer device to host

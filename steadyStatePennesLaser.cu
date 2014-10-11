@@ -3,6 +3,13 @@
  */
 
 
+__device__
+void pointSource(double r, double R1, double R2, double w, double k, double mueff, double u0, double ua, double P, double *temperature )
+{
+
+   double PI_Var = 3.141592653589793;
+   *temperature = ua+(P*PI_Var*(mueff*mueff)*exp(-mueff*r)*(1.0/4.0))/(r*(w-k*(mueff*mueff)))-(exp(-R1*mueff-R2*mueff)*exp(r*sqrt(w/k))*(P*PI_Var*(mueff*mueff)*exp(R1*sqrt(w/k))*exp(R2*mueff)-P*PI_Var*(mueff*mueff)*exp(R2*sqrt(w/k))*exp(R1*mueff)-P*PI_Var*R2*(mueff*mueff*mueff)*exp(R2*sqrt(w/k))*exp(R1*mueff)-R1*u0*w*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0+R1*ua*w*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0+R1*k*(mueff*mueff)*u0*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0-R1*k*(mueff*mueff)*ua*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0+P*PI_Var*R2*(mueff*mueff)*exp(R1*sqrt(w/k))*exp(R2*mueff)*sqrt(w/k)-R1*R2*u0*w*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0+R1*R2*ua*w*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0+R1*R2*k*(mueff*mueff)*u0*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0-R1*R2*k*(mueff*mueff)*ua*exp(R1*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0)*(1.0/4.0))/(r*(w-k*(mueff*mueff))*(exp(R1*sqrt(w/k)*2.0)-exp(R2*sqrt(w/k)*2.0)+R2*exp(R1*sqrt(w/k)*2.0)*sqrt(w/k)+R2*exp(R2*sqrt(w/k)*2.0)*sqrt(w/k)))-(exp(R1*sqrt(w/k))*exp(R2*sqrt(w/k))*exp(-r*sqrt(w/k))*exp(-R1*mueff)*exp(-R2*mueff)*(P*PI_Var*(mueff*mueff)*exp(R1*sqrt(w/k))*exp(R1*mueff)-P*PI_Var*(mueff*mueff)*exp(R2*sqrt(w/k))*exp(R2*mueff)+P*PI_Var*R2*(mueff*mueff*mueff)*exp(R1*sqrt(w/k))*exp(R1*mueff)+R1*u0*w*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0-R1*ua*w*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0-R1*k*(mueff*mueff)*u0*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0+R1*k*(mueff*mueff)*ua*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*4.0+P*PI_Var*R2*(mueff*mueff)*exp(R2*sqrt(w/k))*exp(R2*mueff)*sqrt(w/k)-R1*R2*u0*w*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0+R1*R2*ua*w*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0+R1*R2*k*(mueff*mueff)*u0*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0-R1*R2*k*(mueff*mueff)*ua*exp(R2*sqrt(w/k))*exp(R1*mueff)*exp(R2*mueff)*sqrt(w/k)*4.0)*(1.0/4.0))/(r*(w-k*(mueff*mueff))*(exp(R1*sqrt(w/k)*2.0)-exp(R2*sqrt(w/k)*2.0)+R2*exp(R1*sqrt(w/k)*2.0)*sqrt(w/k)+R2*exp(R2*sqrt(w/k)*2.0)*sqrt(w/k)));
+}
 // __device__
 // void WriteSolution(PetscComplex a[][MaxSize],int n,PetscComplex *x)
 // {
@@ -27,12 +34,15 @@ void steadyStatePennesLaser(
          const double* Perfusion,
          const double* ThermalConduction,
          const double* EffectiveAttenuation,
+         double const innerRadius,
+         double const outerRadius,
          int const NSource,
          double const Power,
          const double* SourceXloc,
          const double* SourceYloc,
          const double* SourceZloc,
-         double const AterialTemperature,
+         double const InitialTemperature,
+         double const ArterialTemperature,
          double const SpecificHeatBlood ,
                double* d_TemperatureArray,
          double const  SpacingX,
@@ -76,16 +86,9 @@ void steadyStatePennesLaser(
                            + (kkk * SpacingZ - SourceZloc[lll])*(kkk * SpacingZ - SourceZloc[lll]);
            double radius   = sqrt(radiusSQ);
            // FIXME - add GF code here
-           //s1 = 3.0/4.0/PI*P*mua*mutr/(w-k*mueff*mueff)*exp(-mueff*r)/r+ua;      
-           //s2 = s1;      
-           //s5 = 1/r*exp(sqrt(w/k)*r)*(-4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*u0*PI*R1*w+4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*u0*PI*R1*k*mueff*mueff+3.0*sqrt(w/k)*R2*P*mua*mutr*exp(-sqrt(w/k)*R2-mueff*R1)+4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*ua*PI*R1*w-4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*ua*PI*R1*k*mueff*mueff-3.0*P*mua*mutr*mueff*R2*exp(-mueff*R2-sqrt(w/k)*R1)-3.0*P*mua*mutr*exp(-mueff*R2-sqrt(w/k)*R1)+4.0*exp(-sqrt(w/k)*R2)*ua*PI*R1*w-4.0*exp(-sqrt(w/k)*R2)*u0*PI*R1*w+4.0*exp(-sqrt(w/k)*R2)*u0*PI*R1*k*mueff*mueff+3.0*P*mua*mutr*exp(-sqrt(w/k)*R2-mueff*R1)-4.0*exp(-sqrt(w/k)*R2)*ua*PI*R1*k*mueff*mueff)/4.0;      
-           //s6 = exp(-sqrt(w/k)*(-R1+R2))/(-w+k*mueff*mueff)/PI/(exp(-2.0*sqrt(w/k)*(-R1+R2))+sqrt(w/k)*R2*exp(-2.0*sqrt(w/k)*(-R1+R2))-1.0+sqrt(w/k)*R2);      
-           //s4 = s5*s6;      
-           //s6 = 1/r*exp(-sqrt(w/k)*r)*exp(-sqrt(w/k)*(-R1+R2))/4.0;      
-           //s9 = 4.0*exp(sqrt(w/k)*R2)*u0*PI*R1*w-4.0*exp(sqrt(w/k)*R2)*u0*PI*R1*w*sqrt(w/k)*R2-4.0*exp(sqrt(w/k)*R2)*u0*PI*R1*k*mueff*mueff+4.0*exp(sqrt(w/k)*R2)*u0*PI*R1*k*mueff*mueff*sqrt(w/k)*R2-3.0*P*mua*mutr*exp(sqrt(w/k)*R2-mueff*R1)+3.0*P*mua*mutr*sqrt(w/k)*R2*exp(sqrt(w/k)*R2-mueff*R1)-4.0*exp(sqrt(w/k)*R2)*ua*PI*R1*w+4.0*exp(sqrt(w/k)*R2)*ua*PI*R1*w*sqrt(w/k)*R2+4.0*exp(sqrt(w/k)*R2)*ua*PI*R1*k*mueff*mueff-4.0*exp(sqrt(w/k)*R2)*ua*PI*R1*k*mueff*mueff*sqrt(w/k)*R2+3.0*P*mua*mutr*mueff*R2*exp(sqrt(w/k)*R1-mueff*R2)+3.0*P*mua*mutr*exp(sqrt(w/k)*R1-mueff*R2);      
-           //s10 = 1/(exp(-2.0*sqrt(w/k)*(-R1+R2))+sqrt(w/k)*R2*exp(-2.0*sqrt(w/k)*(-R1+R2))-1.0+sqrt(w/k)*R2);
-           double s10 = 1.0;
-           temperature = temperature + s10; 
+           double sourcetemperature;
+           pointSource(radius, innerRadius, outerRadius, omega , conduction , mueff, InitialTemperature, ArterialTemperature, Power , &sourcetemperature);
+           temperature = temperature + sourcetemperature; 
           }
         // store temperature in array
         d_TemperatureArray[idx] = temperature;
