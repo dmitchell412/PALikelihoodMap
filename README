@@ -11,6 +11,11 @@ $ make
 iter 500
 Elapsed time is 204.292927 seconds.
 
+Publish
+=======
+opts.outputDir = '.';
+opts.format = 'pdf';
+publish('exampleSSGPU',opts)
 
 
 
