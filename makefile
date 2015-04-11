@@ -1,3 +1,5 @@
+.PHONY: doc rtf
+all: doc
 #
 # file : Makefile (UNIX)
 #
@@ -33,3 +35,11 @@ steadyStatePennesLaser.ptx:   steadyStatePennesLaser.cu
 tags:
 	ctags -R  --langmap=c++:+.cu $(MATLABROOT) . 
 
+doc:
+	pdflatex ReconModel.tex
+
+# build pdf file first to ensure all aux files are available
+# http://latex2rtf.sourceforge.net/
+#   M6 converts equations to bitmaps
+rtf:
+	latex2rtf -M12 -D 600 ReconModel.tex

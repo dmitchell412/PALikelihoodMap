@@ -1,0 +1,574 @@
+%
+%  This simple example illustrates how documents can be
+%  split into smaller segments, each segment processed
+%  by latex2html separately.  This document can be
+%  processed through latex and latex2html with the
+%  corresponding makefile.
+%
+
+\documentclass{article}         % Must use LaTeX 2e
+\usepackage[plainpages=false, colorlinks=true, citecolor=black, filecolor=black, linkcolor=black, urlcolor=black]{hyperref}		
+\usepackage[left=.75in,right=.75in,top=.75in,bottom=.75in]{geometry}
+\usepackage{makeidx,color,boxedminipage}
+\usepackage{graphicx,float}
+\usepackage{amsmath,amsthm,amsfonts,amscd,amssymb} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%	Some math support.					     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%	Theorem environments (these need the amsthm package)
+%
+%% \theoremstyle{plain} %% This is the default
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{ax}{Axiom}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+
+\theoremstyle{remark}
+\newtheorem{rem}{Remark}[section]
+\newtheorem*{notation}{Notation}
+\newtheorem*{exrcs}{Exercise}
+\newtheorem*{exmple}{Example}
+
+%\numberwithin{equation}{section}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%	Macros.							     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%	Here some macros that are needed in this document:
+
+\newcommand{\motion}{\mathbf{\varphi}}
+\newcommand{\hmotion}{\mbox{\boldmath $\hat{\varphi}$}}
+\newcommand{\cauchy}{\mbox{\boldmath $\sigma$}}
+\newcommand{\eqn}[1]{(\ref{#1})}
+\newcommand{\hOmega}{\hat{\Omega}}
+\newcommand{\homega}{\hat{\omega}}
+\newcommand{\nphalf}{n+\frac{1}{2}}
+\newcommand{\nmhalf}{n-\frac{1}{2}}
+\newcommand{\kmhalf}{k-\frac{1}{2}}
+\newcommand{\kphalf}{k+\frac{1}{2}}
+\newcommand{\picdir}{Figures}
+
+\title{PA Recon}
+\author{David Fuentes}
+\begin{document}                % The start of the document
+\maketitle
+
+
+The presence of deoxyhemoglobin PA signal provides a biomarker for locating
+aggressive prostate cancer.  Spectral unmixing to differentiate deoxy- (HHb)
+and oxyhemoglobin (HbO2) PA signal is achieved using inverse analysis
+applied to physics based models of the reconstruction. 
+Modeling the reconstruction involves: (Section~\ref{FluenceSource})
+estimating the initial pressure distribution from the absorbed light source
+and (Section~\ref{WavePropagation}) propagating the acoustic wave from the
+initial pressure distribution to the ultrasound receiver hardware.
+An information theoretic mathematical framework for adaptive sampling and 
+identifying wavelength and SNR
+acquistion parameters that provide the most information content 
+with respect to the physics model based data collection
+is presented in Section~\ref{GeneralMathFramework}.
+The MATLAB script \texttt{exampleRecon.m} documents the user interface
+developed, Section~\ref{UserInterface}. 
+The interface allows the operator to denote needle insertion
+points within the global DICOM frame. GPU kernels are provided
+for compute intensive elements of the pipeline to enable high
+throughput processing.
+
+%Subtask 2: A likelihood volume will be generated in MATLAB by taking the
+%product of all hypoxia maps and corresponding SNR maps and spatially
+%registering (based on encoder data) each likelihood map (generated from
+%every acquired imaging plane) in a volumetric reference frame.
+%
+%Subtask 3: A user interface will be developed in MATLAB that allows the
+%operator to denote needle insertion points and phantom margins in the global
+%reference frame. Although the prototype system detailed herein requires
+%offline processing, a future system would permit quasi-real-time
+%processing/data registration to allow for iterative (i.e., after each needle
+%placement) calculation of the likelihood maps/volume.      
+%
+%Milestone Achieved: PA-needle imaging data and position data will be
+%integrated into a MATLAB-based interface to provide adaptive likelihood
+%maps. 
+
+Tradeoffs between accuracy in the physics based predictions and numerical
+efficiency are considered within the context of the model-based
+reconstruction. A key idea of our approach is that clinically significant
+spatial variations of sO2 may be detected using the appropriate numerical
+approximations. Ie, full numerical solution to the coupled partial
+differential equations that govern the inherent fluence and pressure for
+photoacoustic detection are not needed.
+
+{
+\color{blue}
+Numerical methods for the inverse analysis will include analytical gradient
+information of the misfit between the predictions of the model based
+reconstruction against measured data. Gradient information obtained from
+numerical solutions of the adjoint partial differential equations are known
+to provide the most efficient numerical solution techniques within a
+quasi-Newton optimization framework \cite{maclellan2013estimating,fuentesetal12a}. 
+Alone, model based
+reconstruction of spatial variations of the optical properties is ill-posed
+in the sense that not enough information is collected to determine pixel
+wise variations of the optical properties. Total variation techniques will
+be applied to regularize the spatial dependence of solution. Additional
+regularization terms will include prior knowledge of physically acceptable
+bound of the optical properties. This may also be implemented within a bound
+constrained optimization framework.
+All numerical methods will be validated in controlled phantom experiments of
+known HHb and HbO2 concentrations, see Specific Aim 2. Accurate
+reconstructions within this controlled setting will provide confidence in
+applying the numerical techniques in-vivo.
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Mathematical Framework}\label{GeneralMathFramework}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The underlying philosophy and assumptions within our approach is that the physics 
+models are 1st order accurate or within 70-80\% of the needed accuracy and the error is
+adequate within the assumed Gaussian noise.
+Gaussian distributions provide analytical representations of the random
+variables of interest (ie volume fraction of HHb, $\phi$) within the Bayesian setting and 
+provide a crux for understanding. In particular, we say that a random
+variable $\eta$ belongs to a multi-variate normal distribution 
+of mean $\mu \in \mathbb{R}^n $ and covariance $\Sigma \in \mathbb{R}^{n \times n}$
+\[
+     \eta \sim \mathcal{N}(\mu,\Sigma)  
+    \Rightarrow
+      p(\eta)  = \frac{1}{2 \; \pi \; \det{\Sigma}} \exp\left( - \frac{1}{2} \| \mu - \eta\|^2_{\Sigma}\right)
+\]
+
+
+\begin{enumerate}
+  \item Our data acquistion model, $\mathcal{G}(\vec{k},\theta): \mathbb{R}^a
+\times \mathbb{R}^m \rightarrow \mathbb{R}^n $,
+maps deterministic acquisition
+parameters, $\vec{k} \in \mathbb{R}^a$, and uncertain parameters, $\theta \in \mathbb{R}^m$
+to observables, $\vec{z} \in \mathbb{R}^n$ ( or $\vec{z} \in \mathbb{C}^n$).
+Explicitly, we will assume that the
+measurement models are corrupted by zero mean white noise noise of a
+\textbf{known} covariance matrix, $\Sigma_z \in \mathbb{R}^{n \times n}$ 
+\begin{equation}
+\label{sensormodelstructure}
+\begin{split}
+  \vec{z} & = \mathcal{G}(\vec{k};\theta) + \eta   \qquad   \eta \sim \mathcal{N}(0,\Sigma_z)
+      \\
+  \vec{k} & =  \text{(frequency, laser position, etc)}
+      \\
+  \theta &  =  \text{(volume fraction, absorption, etc)}
+     \end{split}
+\end{equation}
+$\eta$ may be interpreted as the measurement noise or the acquisition noise
+in the sensor model. For a deterministic measurement model $\mathcal{G}$,
+the conditional probablity distribution has an explicit analytical form
+and may be written as a  \textbf{known} Gaussian
+distribution. 
+  \[ 
+      p(\vec{z}|\theta)   =  \mathcal{N}(\mathcal{G}(\vec{k};\theta),\Sigma_z)  
+  \]
+  \item Additional \textbf{known} information is the prior probability
+distributions for the model parameters, $p(\theta)$.  For simplicity,
+    assume that Prior parameters are Gaussian distributed of 
+   \textbf{known} mean, $\hat{\theta}$ and covariance, $\Sigma_\theta$
+   \[
+      \theta \sim \mathcal{N} (\hat{\theta}, \Sigma_\theta)
+   \]
+  \item Bayes theorem is fundamental to the approach.
+\[
+p(y|x) p(x) = p(x,y) = p(x|y) p(y)
+\]
+Bayes rule may be applied to simplify this expression
+to the expected value of the KL-distance
+\[
+p(\theta,z) = p(\theta|z) \; p(z)
+            = p(z|\theta) \; p(\theta)
+\]
+The probability of the measurements $p(z)$ must be interprited in terms of the
+known information. The probability of the measurements may be derived from
+the marginalization of the joint probability and has the interpretation as
+the projection of the joint probability onto the measurement axis.
+\[
+  p(z) = \int_\theta p(\theta,z)  \; d\theta 
+       = \int_\theta p(\theta|z) \; p(\theta)\; d\theta 
+\]
+Similarly, the probabilty of the model parameters given the data,
+$p(\theta|z)$ in understood from Bayes rule.
+\[
+       p(\theta|z) = \frac{ p(z|\theta) \; p(\theta)} {p(z)}
+\]
+  \item  The concept of informational entropy~\cite{Madankan15}, $H(Z)$,
+provides a mathematically rigorous framework to look for measurement acquisition
+parameters, $\vec{k}$, with the high information content of the reconstruction.
+Given a probability space 
+$(\Omega, \mathcal{F},p)$ (probability maps from the
+sigma-algebra of possible events $p:\mathcal{F}\rightarrow [0,1]$
+sigma-algebra, $\mathcal{F}$, defined on set of `outcomes' $\Omega$
+\cite{durrett2010probability}),
+we will define information of an event  as
+proportional to the inverse probability.
+\[
+\text{information} \equiv  \frac{1}{p(\theta)}
+\]
+Intuitively, when a low probability event occurs this provides high
+information.
+The informational entropy is an \textit{average}
+of the information content for a sigma algebra of events $\mathcal{F}$
+\[
+H(Z) = \int_Z  p(Z) \ln\frac{1}{p(Z)}
+\]
+Hence this entropy measure is an average of the information content
+for a given set of events, $\mathcal{F}$, and is proportional to the
+variance or uncertainty in which the set of events occur.
+This agrees with thermodynamic entropy;
+if the information containing events are completely spread out such as in a
+uniform distribution, the entropy is maxmized.
+The entropy
+is zero for a probability distribution in which
+only one event occurs. Zero information is gained when the same event
+always occurs ($0 \ln\frac{1}{0} = 0$). 
+With this interpretation in mind, we want to find acquisition parameters,
+$\vec{k}$, for which the model parameters, $\Theta$, contains the most 
+information about the measurements $Z$. 
+ 
+
+
+\begin{itemize} 
+\item Yet another motivation for the use of Gaussian distributions
+is that the Entropy is analytic~\cite{ahmed1989entropy}
+for a multivariate Gaussian random variable, $X$.
+\begin{equation} \label{GaussianEntropy}
+X\sim\mathcal{N}(\mu,\Sigma)
+\qquad
+\mu \in \mathbb{R}^n
+\qquad
+H(X) = \frac{1}{2} \ln \left((2 \; \pi \; e)^n  \; \det \Sigma \right) 
+\end{equation}
+
+
+\end{itemize} 
+\fbox{\begin{minipage}{.9\textwidth}
+The optimal acquistion parameters $\vec{k}$ maximize the mutual information
+\[
+ \max_k I(\theta,z)
+\]
+As a more tractable alternative direction, a sensitivity analysis may be
+used to locate the measurements that provide the most variance in model
+predictions for uncertain parameters, $\theta$
+\[
+ \max_k \left< \mathcal{G}_i(\vec{k};\theta)  \right>
+\]
+Alternatively, we may consider moments variance as an approximation
+of quanitities of interest,
+$Q(\theta)$
+\[
+   \mathbb{E}[Q] = \int p(\theta) q(\theta) \; d\theta
+\]
+\end{minipage} }
+
+
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Fluence Source}\label{FluenceSource}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}[h]
+\centering
+\scalebox{0.27}{\includegraphics{\picdir/MeshTemplate.png}}
+\caption{ Mesh Template.
+} \label{DistributionComparison}
+\end{figure}
+{ \color{blue}
+Reconstruction methods will incorporate the spatial distribution of the
+absorption and scattering into the expected time dependent photo-acoustic
+signal of a single wavelength excitation. 
+
+The assembled research team has significant experience implementing
+numerical methods for inverse analysis of diffusion-based light transport
+models in turbid media
+\cite{maclellan2013estimating,fuentesetal12a,fuentesetal09,Fuentesetal08}, 
+including directional models of light
+propagation using considerations of the delta-Eddington phase function 
+\cite{maclellan2013estimating,fuentesetal12a}. 
+Directional methods are needed to model the light irradiation patterns
+seen in Figure 4. A key idea of the inverse analysis is that the optical
+absorption provides the image contrast within the spectral unmixing. 
+Within our application, the optical absorption, μa, is considered a linear
+combination of the volume fractions, $\phi$, of deoxy- (HHb) and oxyhemoglobin
+(HbO2) constituents.
+\[
+\mu_a (\lambda,x) = \phi \mu_a^\text{HHb} (\lambda,x) + (1-\phi)\mu_a^\text{HbO2} (\lambda,x)
+\]
+Spatial variations in the optical absorption are directly related to hypoxic
+regions and will be detected by exploiting the frequency dependence of the
+optical properties. 
+}
+
+
+
+The starting point for modeling light transport in tissue is the Boltzman
+equation for the radiance, $L(\mathbf{r},\hat{s})$.
+\begin{equation}\label{TransportEquation}
+\hat{s} \cdot \nabla L(\mathbf{r},\hat{s})
++ \mu_t (\mathbf{r})  L(\mathbf{r},\hat{s})
+ = 
+\mu_s \int_{4\pi} p(\hat{s},\hat{s}') L(\mathbf{r},\hat{s}) \; d \omega
+\qquad
+\mu_t = \mu_a + \mu_s
+\end{equation}
+Here the radiance,  $L(\mathbf{r},\hat{s}) $, represents the radiant power per unit
+of solid angle about unit vector $\hat{s}$ and per unit area perpendicular
+$\hat{s}$.
+The Boltzman equation represents a conservation of energy applied to light
+energy transport in tissue at point $r$.
+The phase function, $p(\hat{s},\hat{s}')$, provides a measure of the
+probability of a scattering photons traveling in direction $\hat{s}'$ 
+into the direction $\hat{s}$. The mean cosine  of the scattering angle
+is known as the anisotropy factor, $g$
+\[
+ \int_{4\pi} p(\hat{s} \cdot \hat{s}')(\hat{s} \cdot \hat{s}') d\omega' \equiv g
+\]
+
+By convention, the radiance is considered as the summation of a
+\textit{known} primary light source with irradiance, $E(\mathbf{r})$, traveling in
+direction $s_0$ and scattered light source.
+\[
+  L(\mathbf{r},\hat{s}) = L_p(\mathbf{r},\hat{s}) + L_s(\mathbf{r},\hat{s})
+               = \frac{E(\mathbf{r})  \delta( 1 - \hat{s} \cdot \hat{s}_0)}{
+2\pi}  + L_s(\mathbf{r},\hat{s})
+\]
+The scattered radiance may be represented as sum of spherical harmonics,
+this is known as the P-n approximation\cite{Welch95,Modest2003}. 
+\[
+  L_s(\mathbf{r},\hat{s})  = \sum^\infty_i L_i(\mathbf{r}) P_i(\hat{s})
+\]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Standard Diffusion Approximation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+{\color{red}
+When only the first two terms are used, this is known as the
+P-1\cite{Modest2003} or diffusion approximation\cite{Modest2003}. 
+}
+\begin{equation} \label{DiffusionApproximation}
+  L_s(\mathbf{r},\hat{s})  \approx \frac{1}{4 \pi} \varphi_d(\mathbf{r}) + \frac{3}{4} \mathbf{j}(\mathbf{r}) \cdot \hat{s}
+\end{equation}
+When i=0,1,2,3 terms are kept, this is known as the P-3
+approximation. The P-2 approximation is generally less accurate and not
+used\cite{Modest2003}.
+
+The diffusion model for light transport is valid under the assumption
+that light is scattered more than absorbed.
+\[
+\mu_a << \mu_s(1-g)  \Rightarrow \mu_{eff} << \mu_t
+\]
+
+The PDE for the SDA is obtained in two steps by (i) substituting \eqn{DiffusionApproximation}
+into \eqn{TransportEquation} and integrating over all solid angles and (ii)
+multipling \eqn{TransportEquation}  by $\hat{s}$ and integrating over all
+solid angles. Combining the result yeilds
+\[ \begin{split}
+\nabla\cdot \left( \frac{1}{3 \mu_{tr} } \nabla \varphi_d(\mathbf{r}) \right)  & - \mu_a \varphi_d(\mathbf{r}) 
+= 
+- \mu_s E(\mathbf{r})
++ \nabla  \cdot  \left( \frac{g \mu_s }{\mu_{tr}} E(\mathbf{r})  \hat{s}_0 \right) 
+\\
+& \mathbf{j}(\mathbf{r}) = \frac{-1}{3 \mu_{tr}} 
+\left[
+ \nabla \varphi_d(\mathbf{r}) - 3 g \mu_s E(\mathbf{r}) \hat{s}_0
+\right]
+\end{split}
+\qquad
+\begin{split}
+\mu_s' = \mu_s (1-g)
+\quad
+\mu_{tr} = \mu_a + \mu_s'
+\\
+\mu_{eff} = \sqrt{3\mu_a  \mu_{tr}}
+\end{split}
+\]
+$\mathbf{j}$ is the radiant flux, $\hat{z}$ is the direction of the collimated light, etc...
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Homogenious Coefficients}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\cite{fuentesetal10a}
+\textbf{
+This does not work for heterogenious case!!!
+The analytic solution uses method of undetermined coefficients
+which only works for homogenious case!!!
+}
+Consider Pennes model coupled to a diffusion theory model of light
+transport in tissue. The total fluence at a point is given by the
+sum of the scattered and primary light $\varphi_t(x,t) = z(x,t) + E(x,t)$.
+
+Through the diffusion model,
+the scattered fluence $z$ is obtained from the 
+known irradiance $E(x,t)$ (primary source of photons) 
+and its flux $\textbf{F}(x,t)$.
+\textbf{
+justified in calling $\textbf{F}(x,t)$  the flux of the irradiance ???
+}
+\[
+\nabla \cdot \left( \frac{1}{3 \mu_{tr} } \nabla \varphi_d(\mathbf{r}) \right)
+ - \mu_a \varphi_d(\mathbf{r}) 
+= 
+- \mu_s^*  E(\mathbf{r})
++   \nabla \cdot \left( \frac{g^* \mu_s^*}{\mu_{tr}} E(\mathbf{r}) \hat{s}_0 \right)
+\]
+\[
+ \frac{1}{c(x)}
+ \frac{\partial(z+E)}{\partial t}
+ -{\color{red}\mu_a(\textbf{x})} z 
+ +{\color{red}\mu_s^*(\textbf{x},m)} E
+ = \nabla \cdot 
+   \left( 
+   - \frac{ \nabla z }{3\mu_{tr}(\textbf{x},m)} 
+   + \frac{ {\color{red}\mu_s^*}(\textbf{x},m) g^* }{3\mu_{tr}(\textbf{x},m)}
+       \textbf{F}
+   \right)
+\qquad
+  \mu_{tr}(\textbf{x},m)  = 
+                 {\color{red}\mu_a(\textbf{x},m)} + 
+                    {\color{red}\mu_s(\textbf{x},m)} (1-g)
+\]
+The irradiance is provided by a photon flux emitted throughout
+the domain of an interstitial laser fiber $\Omega_{tip}$.
+The photons are emittied by an applied power density,
+$P^* \left[\frac{W}{m^3}\right]$. Each position in the domain $\hat{x}$
+is treated as a point source of irradiance
+\[
+dE(x,\hat{x})= 
+             \frac{P^*(t)d\hat{x}}{4\pi \|\textbf{x} -
+\hat{\textbf{x}}\|^2}
+\]
+The total irradiance and flux is the integral of each attenuated point source.
+\[
+\begin{split}
+E(x,t) & = \int_{\Omega_{tip}} 
+             \frac{P^*(t)}{4\pi \|\textbf{x} - \hat{\textbf{x}}\|^2}
+             \exp\left(\mu_t^*(\textbf{x},m)
+                         \|\textbf{x} - \hat{\textbf{x}}\|\right) d\hat{x}
+ \\
+\textbf{F}(x,t) & = \int_{\Omega_{tip}} 
+             \frac{P^*(t)}{4\pi \|\textbf{x} - \hat{\textbf{x}}\|^2}
+             \exp\left(\mu_t^*(\textbf{x},m) 
+                         \|\textbf{x} - \hat{\textbf{x}}\|\right) 
+\frac{\textbf{x} - \hat{\textbf{x}} }{ \|\textbf{x} - \hat{\textbf{x}}\| }
+d\hat{x}
+\end{split} 
+\]
+\[
+  \mu_t^*(\textbf{x},m)  = 
+                 {\color{red}\mu_a(\textbf{x},m)} + 
+                    {\color{red}\mu_s(\textbf{x},m)}  
+\]
+\textbf{${\color{red}\mu_t(\textbf{x},m)}$ should be the average over
+the path length for the heterogenious case}.
+An analytic solution may be obtained by approximating the integral for
+the irradiance and flux as
+\[
+\begin{split}
+E(x,t) 
+  & \approx 
+  \sum_{e\in \Omega_{tip}} E_e(x,t)
+  =
+  \sum_{e\in \Omega_{tip}} 
+          \frac{\Delta V_e P^*(t)}{4\pi \|\textbf{x} - \hat{\textbf{x}}_e\|^2}
+          \exp\left(\mu_t^*(\textbf{x},m) 
+                 \|\textbf{x} - \hat{\textbf{x}}_e\|\right) 
+ \\
+\textbf{F}(x,t) 
+  & \approx 
+    \sum_{e\in \Omega_{tip}} \textbf{F}_e(x,t) 
+  = \sum_{e\in \Omega_{tip}} 
+          \frac{\Delta V_e P^*(t)}{4\pi \|\textbf{x} - \hat{\textbf{x}}\|^2}
+          \exp\left(\mu_t^*(\textbf{x},m) 
+                         \|\textbf{x} - \hat{\textbf{x}}\|\right) 
+\frac{\textbf{x} - \hat{\textbf{x}} }{ \|\textbf{x} - \hat{\textbf{x}}\| }
+\end{split} 
+\]
+where $\Delta V_e$ is the volume and 
+$\hat{\textbf{x}}_e$ is the centroid.
+By linearity, each element in the discretization may be treated as
+an uncoupled and independent source in the light diffusion equation.
+\[
+ -{\color{red}\mu_a(\textbf{x})} z_e 
+ +{\color{red}\mu_s^*(\textbf{x},m)} E_e
+ = \nabla \cdot 
+   \left( 
+   - \frac{ \nabla z_e }{3\mu_{tr}(\textbf{x},m)} 
+   + \frac{ {\color{red}\mu_s^*}(\textbf{x},m) g^* }{3\mu_{tr}(\textbf{x},m)} 
+       (\textbf{F})_e
+   \right) \qquad \forall e \in \Omega_{tip}
+\]
+The fluence resulting from each element source $(\varphi_t)_e$
+may be obtained from the classical isotropic point source
+solution \cite{Welch95}.
+The total emanating fluence is the superposition of the element wise
+solutions and reduces to a volume weighted sum over the elements.
+\[
+   \varphi_t = \sum_{e \in \Omega_{tip}}
+ {\color{red}P^*(t)}  V_e  \left(
+   \frac{3\mu_{tr} \exp(-\mu_{eff} \|\textbf{x} -{\color{red}\textbf{x}_e}\|) }
+      {4\pi \|\textbf{x}-{\color{red}\textbf{x}_e}\|}
+ - 
+      \frac{ 
+             \exp(-\mu_t^* \|\textbf{x} -{\color{red}\textbf{x}_e}\|) }
+           {2\pi \|\textbf{x}-{\color{red}\textbf{x}_e}\|^2}
+   \right)
+\approx
+    \sum_{e \in \Omega_{tip}}
+ {\color{red}P^*(t)}  V_e 
+   \frac{3\mu_{tr} \exp(-\mu_{eff} \|\textbf{x} -{\color{red}\textbf{x}_e}\|) }
+      {4\pi \|\textbf{x}-{\color{red}\textbf{x}_e}\|}
+\]
+\[
+ \mu_{eff}(\textbf{x},m)  = 
+           \sqrt{ 3 {\color{red}\mu_a(\textbf{x},m)} \mu_{tr}(\textbf{x},m) }
+\]
+
+\[
+\begin{split}
+ \rho  c_p \frac{\partial u}{\partial t}
+ -\nabla \cdot ( k(u,\textbf{x}) \nabla u) 
+ +\omega(u,\textbf{x})c_{blood} (u - u_a )
+  &  = 
+ P(t)
+   \frac{\mu_{eff}^2 \exp(-\mu_{eff}(u,\textbf{x})  
+         \|\textbf{x} -\textbf{x}_e\|) }
+      {4\pi \|\textbf{x}-\textbf{x}_e\|}
+\\
+ k \nabla u \cdot n    = h (u - u_\infty)  \quad x \in \partial \Omega_\text{tip}
+\qquad & \qquad
+ k \nabla u \cdot n    = 0                 \quad x \in \partial \Omega
+\end{split}
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Wave Propagation}\label{WavePropagation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Computer models of the partial differential equation governing the
+propagation of the acoustic wave are expensive. Approximations using k-space
+methods and greens function techniques for back projection will be
+utilized....
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{User Interface}\label{UserInterface}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\nocite{*}
+\bibliographystyle{apalike}
+\bibliography{ReconModel}
+
+
+\end{document}
