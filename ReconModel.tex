@@ -107,27 +107,6 @@ approximations. Ie, full numerical solution to the coupled partial
 differential equations that govern the inherent fluence and pressure for
 photoacoustic detection are not needed.
 
-{
-\color{blue}
-Numerical methods for the inverse analysis will include analytical gradient
-information of the misfit between the predictions of the model based
-reconstruction against measured data. Gradient information obtained from
-numerical solutions of the adjoint partial differential equations are known
-to provide the most efficient numerical solution techniques within a
-quasi-Newton optimization framework \cite{maclellan2013estimating,fuentesetal12a}. 
-Alone, model based
-reconstruction of spatial variations of the optical properties is ill-posed
-in the sense that not enough information is collected to determine pixel
-wise variations of the optical properties. Total variation techniques will
-be applied to regularize the spatial dependence of solution. Additional
-regularization terms will include prior knowledge of physically acceptable
-bound of the optical properties. This may also be implemented within a bound
-constrained optimization framework.
-All numerical methods will be validated in controlled phantom experiments of
-known HHb and HbO2 concentrations, see Specific Aim 2. Accurate
-reconstructions within this controlled setting will provide confidence in
-applying the numerical techniques in-vivo.
-}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -529,15 +508,15 @@ sensitivity in two steps.
 \begin{enumerate}
 \item
 Uncertainty quantification techniques are applied to compute the variance
-of the photoacoustic source $S(r)[?]$, 
+of the photoacoustic source,
 Section~\ref{GeneralMathFramework} and Section~\ref{FluenceSource}.
 \item  Sensitivity statistics are propagated through our photo acoustic
 model for the wave propagation, Section~\ref{WavePropagation}.
 \end{enumerate}
 The SDA fluence model is  proportional to 
-photoacoustic source, $S(r)$,
-with a proportionality constant given by the
-Gruneisen parameter, $\Gamma$ \\
+photoacoustic source,  $S(r) \left[\frac{W}{m^3}\right]$, 
+with a proportionality constant given by the \textit{dimension-less}
+Gruneisen parameter, $\Gamma = \frac{v_s^2 \beta}{c_p} $ \\
 \fbox{\begin{minipage}{.9\textwidth}
 \[
   \text{PA source} =   S(r) = 
@@ -556,6 +535,14 @@ Gruneisen parameter, $\Gamma$ \\
 \[
 \mu_a(\lambda,x) = \phi(x) \mu_a^\text{HHb} (\lambda) + (1-\phi(x))\mu_a^\text{HbO2}(\lambda)
 \]
+\end{minipage} }
+
+\begin{figure}[h]
+\centering
+\begin{tabular}{cc}
+\scalebox{0.47}{\includegraphics{\picdir/snapshot0002.png}} &
+\scalebox{0.47}{\includegraphics{\picdir/snapshot0001.png}}
+\end{tabular}
 \[
   \Omega = \cup_j \Omega_j
   \qquad \qquad
@@ -569,52 +556,161 @@ Gruneisen parameter, $\Gamma$ \\
   \end{split}
    \right.
    \qquad
- \phi(x)  = \sum_{j=1}^{N_\phi} \phi_j \psi_j(x) 
+ \phi(x)  = \sum_{j=1}^{N_\phi = 3} \phi_j \psi_j(x) 
 \]
-\[ 
-   \phi_j \sim \mathcal{U}(0,1) 
-   \qquad 
-  \mu_a^\text{HHb}(\lambda) \sim 
-       \mathcal{N}\left( \bar{\mu_a}^\text{HHb}(\lambda) , \Sigma_{\mu_a} \right) 
-   \qquad 
-  \mu_a^\text{HbO2}(\lambda) \sim 
-       \mathcal{N}\left( \bar{\mu_a}^\text{HbO2}(\lambda) , \Sigma_{\mu_a} \right) 
-\]
+\caption{
+The spatial decomposition is given by a three constituent Gaussian mixture
+model applied to pre-procedural imaging.
+The label map also encodes the laser applicator location (Label = 4 =
+applicator centroid, Label = 5 = entry point).
+} \label{SpatialBasis}
+\end{figure}
+Assuming each parameter is independent, the parameter space probability
+function is the tensor product of the individual distributions.
 \[
-  \theta = 
+\begin{split}
+  \theta & = 
   \left(
-   \phi_1, ... , \phi_{N_\phi},
+   \phi_1, ... , \phi_3,
   \mu_a^\text{HHb}(\lambda) ,
   \mu_a^\text{HbO2}(\lambda)
   \right)
-  \qquad \qquad \qquad
-   \vec{k} = \lambda
+  \\
+  \mu_a & = 
+  \left(   \theta_1 \psi_1(x) + \theta_2 \psi_2(x) + \theta_3 \psi_3(x)  \right)
+     \theta_4
+  \\
+  & + 
+  \left(1- \theta_1 \psi_1(x) + \theta_2 \psi_2(x) + \theta_3 \psi_3(x)  \right)
+     \theta_5
+\end{split}
+ \qquad
+  p(s|\theta) =  
+       \frac{1}{ \sqrt{2\; \pi \; \Sigma_s}}
+       \exp^{-\frac{(s - \Gamma \mu_a \varphi_t )^2}{2 \; \Sigma_s}}
 \]
-\end{minipage} }
 \[
-   \text{Var}(S(r))
+  p(\theta) =  
+     \underbrace{1}_{\mathcal{U}(0,1)} \cdot
+     \underbrace{1}_{\mathcal{U}(0,1)} \cdot
+     \underbrace{1}_{\mathcal{U}(0,1)} \cdot
+     \underbrace{
+       \frac{1}{ \sqrt{2\; \pi \; \Sigma_{\mu_a}}}
+       \exp^{-\frac{(\theta_4 -\bar{\mu_a}^\text{HHb}(\lambda))^2}{2 \; \Sigma_{\mu_a}}}
+                }_{ 
+       \mathcal{N}\left( \bar{\mu_a}^\text{HHb}(\lambda) , \Sigma_{\mu_a} \right) 
+                }
+       \cdot
+     \underbrace{
+       \frac{1}{ \sqrt{2\; \pi \; \Sigma_{\mu_a}}}
+       \exp^{-\frac{(\theta_5 -\bar{\mu_a}^\text{HbO2}(\lambda))^2}{2 \; \Sigma_{\mu_a}}}
+                }_{ 
+       \mathcal{N}\left( \bar{\mu_a}^\text{HbO2}(\lambda) , \Sigma_{\mu_a} \right) 
+                }
+\]
+\begin{table}[h]
+\caption{
+Constitutive
+Data used in numerical
+simulations~\cite{welch1984thermal,duck1990}}\label{modelparamaters}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|} \hline
+$\bar{\mu_a}^\text{HHb}(750nm) $ $ \frac{1}{ m }$ 
+& 
+$\bar{\mu_a}^\text{HHb}(850nm) $ $ \frac{1}{ m }$ 
+& 
+$\bar{\mu_a}^\text{HbO2}(750nm) $ $ \frac{1}{ m }$ 
+& 
+$\bar{\mu_a}^\text{HbO2}(850nm) $ $ \frac{1}{ m }$ 
+& 
+ $g$  &
+$\mu_s$ $\frac{1}{cm}$  &  $\sqrt{\Sigma_{\mu_a}}$  $\frac{1}{m}$  
+ &
+$\Gamma$
+\\ \hline
+          7.e2              &             4.e2            & 5.e2  &
+6.e2              &       0.9                  &  140.e2
+&            1.e1                      &                  .45          \\
+\hline
+\end{tabular}
+\end{table}
+
+Uncertainty quantification
+techniques~\cite{fahrenholtz2013generalised} are used to evaluate sensor
+model statistics.
+\[ 
+   \bar{S}(\lambda)  = \mathbb{E}[S]   = \int_S   ds \; s
+   \underbrace{\int_\theta  d\theta \; p(s|\theta) \; p(\theta)}_{p(s)}
+  \qquad
+   \text{Var}(S)(\lambda)   = 
+   \mathbb{E}[ ( S - \bar{S} )^2 ]   = \int_S   ds \;(s - \bar{S})^2 
+   \underbrace{\int_\theta  d\theta \; p(s|\theta) \; p(\theta)}_{p(s)}
 \]
 \[ \begin{split}
-   \bar{Z} = \mathbb{E}[Z]  & = \int_Z   dz \; z
-   \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
+ p(s)  &= 
+   \int_0^1
+   \int_0^1
+   \int_0^1
+   \int_\mathbb{R}
+   \int_\mathbb{R}
+                d\theta \; p(s|\theta) \; 
+       \frac{1}{ \sqrt{2\; \pi \; \Sigma_{\mu_a}}}
+       \exp^{-\frac{(\theta_4 -\bar{\mu_a}^\text{HHb}(\lambda))^2}{2 \; \Sigma_{\mu_a}}}
+       \frac{1}{ \sqrt{2\; \pi \; \Sigma_{\mu_a}}}
+       \exp^{-\frac{(\theta_5 -\bar{\mu_a}^\text{HbO2}(\lambda))^2}{2 \; \Sigma_{\mu_a}}}
   \\
-   \mathbb{E}[ ( Z - \bar{Z} )^2 ]  & = \int_Z   dz \;(z - \bar{Z})^2 
-   \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
-  \\
-   &  \propto
-    \int_Z   dz \;(z - \bar{z})^2 \int_\theta  d\theta 
- \exp\left( - \frac{1}{2} \|  z- \mathcal{G}(\vec{k},\theta)  \|^2_{\Sigma_z}\right)
- \exp\left( - \frac{1}{2} \|  \theta - \hat{\theta}  \|^2_{\Sigma_\theta}\right)
- \end{split}
+   & =
+   \int_0^1
+   \int_0^1
+   \int_0^1
+   \int_\mathbb{R}
+   \int_\mathbb{R}
+                d\theta \;
+       \frac{1}{ \sqrt{2\; \pi \; \Sigma_s}}
+       \exp^{-\frac{(s - \Gamma \mu_a(\theta) \varphi_t(\theta) )^2}{2 \; \Sigma_s}}
+             \;
+       \frac{1}{ 2\; \pi \; \Sigma_{\mu_a}}
+       \exp^{-\frac{(\theta_4 -\bar{\mu_a}^\text{HHb}(\lambda))^2+(\theta_5 -\bar{\mu_a}^\text{HbO2}(\lambda))^2 }{2 \; \Sigma_{\mu_a}}}
+\end{split}
 \]
 
 \begin{figure}[h]
 \centering
-\scalebox{0.27}{\includegraphics{\picdir/MeshTemplate.png}}
-\caption{ Mesh Template.
+\begin{tabular}{ccc}
+\scalebox{0.14}{\includegraphics{\picdir/MeshTemplate.png}} &
+\scalebox{0.14}{\includegraphics{\picdir/MeshTemplate.png}} &
+\scalebox{0.14}{\includegraphics{\picdir/MeshTemplate.png}} \\
+(a) & (b) & (c) \\
+\end{tabular}
+\caption{ Wavelength Sensitivity.
+(a) The model of the laser applicator is registers to the prostate
+data set shown in Figure~\ref{SpatialBasis}.
+The predicted sensitivity at (b) $\lambda = 750nm $ and (c) $\lambda = 850nm $ 
+is shown.
 } \label{DistributionComparison}
 \end{figure}
 
+%% {
+%% \color{blue}
+%% Numerical methods for the inverse analysis will include analytical gradient
+%% information of the misfit between the predictions of the model based
+%% reconstruction against measured data. Gradient information obtained from
+%% numerical solutions of the adjoint partial differential equations are known
+%% to provide the most efficient numerical solution techniques within a
+%% quasi-Newton optimization framework \cite{maclellan2013estimating,fuentesetal12a}. 
+%% Alone, model based
+%% reconstruction of spatial variations of the optical properties is ill-posed
+%% in the sense that not enough information is collected to determine pixel
+%% wise variations of the optical properties. Total variation techniques will
+%% be applied to regularize the spatial dependence of solution. Additional
+%% regularization terms will include prior knowledge of physically acceptable
+%% bound of the optical properties. This may also be implemented within a bound
+%% constrained optimization framework.
+%% All numerical methods will be validated in controlled phantom experiments of
+%% known HHb and HbO2 concentrations, see Specific Aim 2. Accurate
+%% reconstructions within this controlled setting will provide confidence in
+%% applying the numerical techniques in-vivo.
+%% }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \nocite{*}
