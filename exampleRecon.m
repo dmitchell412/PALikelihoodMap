@@ -40,25 +40,25 @@ R2 = .1   ; % 100mm
 
 %% initialize data arrays
 % initialize on host and perform ONE transfer from host to device
-h_temperature     = zeros(npixel,npixel,npixel);
-d_temperature  = gpuArray( h_temperature  );
+h_pasource     = zeros(npixel,npixel,npixel);
+d_pasource  = gpuArray( h_pasource  );
 
 %% Compile and setup thread grid
 % grid stride loop design pattern, 1-d grid
 % http://devblogs.nvidia.com/parallelforall/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
-ssptx = parallel.gpu.CUDAKernel('steadyStatePennesLaser.ptx', 'steadyStatePennesLaser.cu');
+ssptx = parallel.gpu.CUDAKernel('sdaFluenceModel.ptx', 'sdaFluenceModel.cu');
 threadsPerBlock = 256;
 ssptx.ThreadBlockSize=[threadsPerBlock  1];
 ssptx.GridSize=[numSMs*32               1];
 %% Run on GPU
-[d_temperature ] = feval(ssptx,ntissue,materialID,perfusion,conduction, mueff, R1, R2, nsource, power ,xloc,yloc,zloc, u_artery ,u_artery , c_blood, d_temperature,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
+[d_pasource ] = feval(ssptx,ntissue,materialID, mueff, nsource, power ,xloc,yloc,zloc, d_pasource,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
 
 %%  transfer device to host
-h_temperature  = gather( d_temperature  );
+h_pasource  = gather( d_pasource  );
 
-%%  plot temperature
+%%  plot pasource
 handle2 = figure(2)
-imagesc(h_temperature(:,:,50), [37 100]);
+imagesc(h_pasource(:,:,50), [37 100]);
 colormap default
 colorbar
 
@@ -72,13 +72,13 @@ for iii = 1:sizesearch
    disp(sprintf('iter %d',iii));
  end
  mueff(2) = 1. *iii;
- [p_temperature ] = feval(ssptx,ntissue,materialID,perfusion,conduction, mueff, R1, R2, nsource, power ,xloc,yloc,zloc, u_artery ,u_artery , c_blood, d_temperature,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
- objective(iii) = gather(sum((p_temperature(:) - d_temperature(:)).^2));
+ [p_pasource] = feval(ssptx,ntissue,materialID, mueff, nsource, power ,xloc,yloc,zloc, d_pasource,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
+ objective(iii) = gather(sum((p_pasource(:) - d_pasource(:)).^2));
 end
 toc
 handle3 = figure(3)
 plot(objective)
 
 saveas(handle1,'material','png')
-saveas(handle2,'temperature','png')
+saveas(handle2,'pasource','png')
 saveas(handle3,'exhaustivesearch','png')

@@ -29,7 +29,7 @@ CUDADIR = /opt/apps/cuda/5.5/
 
 # The following are the definitions for each target individually.
 
-steadyStatePennesLaser.ptx:   steadyStatePennesLaser.cu
+sdaFluenceModel.ptx:   sdaFluenceModel.cu
 	$(CUDADIR)/bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   $<
 
 tags:
