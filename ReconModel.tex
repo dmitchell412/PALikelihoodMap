@@ -184,27 +184,13 @@ distributions for the model parameters, $p(\theta)$.  For simplicity,
       \theta \sim \mathcal{N} (\hat{\theta}, \Sigma_\theta)
    \]
   \item Bayes theorem is fundamental to the approach.
-\[
-p(y|x) p(x) = p(x,y) = p(x|y) p(y)
-\]
-Bayes rule may be applied to simplify this expression
-to the expected value of the KL-distance
-\[
-p(\theta,z) = p(\theta|z) \; p(z)
-            = p(z|\theta) \; p(\theta)
-\]
 The probability of the measurements $p(z)$ must be interprited in terms of the
 known information. The probability of the measurements may be derived from
 the marginalization of the joint probability and has the interpretation as
 the projection of the joint probability onto the measurement axis.
 \[
   p(z) = \int_\theta p(\theta,z)  \; d\theta 
-       = \int_\theta p(\theta|z) \; p(\theta)\; d\theta 
-\]
-Similarly, the probabilty of the model parameters given the data,
-$p(\theta|z)$ in understood from Bayes rule.
-\[
-       p(\theta|z) = \frac{ p(z|\theta) \; p(\theta)} {p(z)}
+       = \int_\theta p(z|\theta) \; p(\theta)\; d\theta 
 \]
   \item  The concept of informational entropy~\cite{Madankan15}, $H(Z)$,
 provides a mathematically rigorous framework to look for measurement acquisition
@@ -217,14 +203,16 @@ sigma-algebra, $\mathcal{F}$, defined on set of `outcomes' $\Omega$
 we will define information of an event  as
 proportional to the inverse probability.
 \[
-\text{information} \equiv  \frac{1}{p(\theta)}
+\text{information} \equiv  \frac{1}{p(z)}
 \]
 Intuitively, when a low probability event occurs this provides high
 information.
 The informational entropy is an \textit{average}
 of the information content for a sigma algebra of events $\mathcal{F}$
 \[
-H(Z) = \int_Z  p(Z) \ln\frac{1}{p(Z)}
+H(Z) = \int_Z  p(z) \ln\frac{1}{p(z)} \; dz
+\qquad
+  p(z) = \int_\theta p(z|\theta) \; p(\theta)\; d\theta 
 \]
 Hence this entropy measure is an average of the information content
 for a given set of events, $\mathcal{F}$, and is proportional to the
@@ -236,45 +224,36 @@ The entropy
 is zero for a probability distribution in which
 only one event occurs. Zero information is gained when the same event
 always occurs ($0 \ln\frac{1}{0} = 0$). 
-With this interpretation in mind, we want to find acquisition parameters,
-$\vec{k}$, for which the model parameters, $\Theta$, contains the most 
-information about the measurements $Z$. 
+Intuitively, we want to find acquisition parameters,
+$\vec{k}$, for which the measurements are most uncertain
+\[
+\max_k H(Z)
+  \quad \Leftrightarrow \quad
+\min_k 
+    \int_Z   dz \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
+                \underbrace{ln \left(\int_\theta  d\theta \; p(z|\theta) \; p(\theta)\right)}_{ln \; p(z)}
+\]
+Alternatively we may consider this entropy maximization problem as a
+sensitivity analysis for the variance of the measurement $Z$, ie . 
+$ \max_k H(Z) \approx  \max_k \text{Var}(Z) $
+\[ \begin{split}
+   \bar{Z} = \mathbb{E}[Z]  & = \int_Z   dz \; z
+   \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
+  \\
+   \mathbb{E}[ ( Z - \bar{Z} )^2 ]  & = \int_Z   dz \;(z - \bar{Z})^2 
+   \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
+  \\
+   &  \propto
+    \int_Z   dz \;(z - \bar{z})^2 \int_\theta  d\theta 
+ \exp\left( - \frac{1}{2} \|  z- \mathcal{G}(\vec{k},\theta)  \|^2_{\Sigma_z}\right)
+ \exp\left( - \frac{1}{2} \|  \theta - \hat{\theta}  \|^2_{\Sigma_\theta}\right)
+ \end{split}
+\]
+Probilistic integrals may be
+computed from uncertainty quantification
+techniques~\cite{fahrenholtz2013generalised}.
+
  
-
-
-\begin{itemize} 
-\item Yet another motivation for the use of Gaussian distributions
-is that the Entropy is analytic~\cite{ahmed1989entropy}
-for a multivariate Gaussian random variable, $X$.
-\begin{equation} \label{GaussianEntropy}
-X\sim\mathcal{N}(\mu,\Sigma)
-\qquad
-\mu \in \mathbb{R}^n
-\qquad
-H(X) = \frac{1}{2} \ln \left((2 \; \pi \; e)^n  \; \det \Sigma \right) 
-\end{equation}
-
-
-\end{itemize} 
-\fbox{\begin{minipage}{.9\textwidth}
-The optimal acquistion parameters $\vec{k}$ maximize the mutual information
-\[
- \max_k I(\theta,z)
-\]
-As a more tractable alternative direction, a sensitivity analysis may be
-used to locate the measurements that provide the most variance in model
-predictions for uncertain parameters, $\theta$
-\[
- \max_k \left< \mathcal{G}_i(\vec{k};\theta)  \right>
-\]
-Alternatively, we may consider moments variance as an approximation
-of quanitities of interest,
-$Q(\theta)$
-\[
-   \mathbb{E}[Q] = \int p(\theta) q(\theta) \; d\theta
-\]
-\end{minipage} }
-
 
 \end{enumerate}
 
@@ -283,40 +262,74 @@ $Q(\theta)$
 \section{Fluence Source}\label{FluenceSource}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{figure}[h]
-\centering
-\scalebox{0.27}{\includegraphics{\picdir/MeshTemplate.png}}
-\caption{ Mesh Template.
-} \label{DistributionComparison}
-\end{figure}
-{ \color{blue}
-Reconstruction methods will incorporate the spatial distribution of the
+Reconstruction methods incorporate the spatial distribution of the
 absorption and scattering into the expected time dependent photo-acoustic
 signal of a single wavelength excitation. 
-
-The assembled research team has significant experience implementing
-numerical methods for inverse analysis of diffusion-based light transport
+Diffusion-based light transport
 models in turbid media
-\cite{maclellan2013estimating,fuentesetal12a,fuentesetal09,Fuentesetal08}, 
-including directional models of light
+as well as  directional models of light
 propagation using considerations of the delta-Eddington phase function 
-\cite{maclellan2013estimating,fuentesetal12a}. 
-Directional methods are needed to model the light irradiation patterns
-seen in Figure 4. A key idea of the inverse analysis is that the optical
+are available
+\cite{maclellan2013estimating,fuentesetal12a,fuentesetal09,Fuentesetal08}.
+A key idea of the inverse analysis is that the optical
 absorption provides the image contrast within the spectral unmixing. 
-Within our application, the optical absorption, μa, is considered a linear
+Within our application, the optical absorption, $\mu_a$, is considered a linear
 combination of the volume fractions, $\phi$, of deoxy- (HHb) and oxyhemoglobin
 (HbO2) constituents.
 \[
-\mu_a (\lambda,x) = \phi \mu_a^\text{HHb} (\lambda,x) + (1-\phi)\mu_a^\text{HbO2} (\lambda,x)
+\mu_a(\lambda,x) = \phi(x) \mu_a^\text{HHb} (\lambda) + (1-\phi(x))\mu_a^\text{HbO2}(\lambda)
 \]
 Spatial variations in the optical absorption are directly related to hypoxic
 regions and will be detected by exploiting the frequency dependence of the
-optical properties. 
-}
+optical properties. Spatial variations in optical parameters are considered
+as the spatial decomposition of the prostate domain, $\Omega$
+\[
+  \Omega = \cup_j \Omega_j
+  \qquad \qquad
+  \Omega_i \cap \Omega_j = \emptyset  \quad i \neq j
+  \qquad \qquad
+  \psi_j(x) = 
+  \left\{
+  \begin{split}
+   1 & \quad x    \in \Omega_j \\
+   0 & \quad x \notin \Omega_j \\
+  \end{split}
+   \right.
+   \qquad
+ \phi(x)  = \sum_{j=1}^{N_\phi} \phi_j \psi_j(x) 
+\]
 
+Within the context of our mathematical framework, Section~\ref{GeneralMathFramework},
+the volume fraction mixing parameter and the optical parameters are
+uncertain model variables, $\theta$. The wavelength is the deterministic
+acquisition parameters, $\vec{k}$.
+we have little information about the mixing parameter $\phi$ and will
+consider this to be uniformly distributed. Optical absorption is both
+species and wavelength dependent. We assume that the optical parameters is
+Gaussian distributed about the mean of the tabulated spectrum.
+\[ 
+   \phi_j \sim \mathcal{U}(0,1) 
+   \qquad 
+  \mu_a^\text{HHb}(\lambda) \sim 
+       \mathcal{N}\left( \bar{\mu_a}^\text{HHb}(\lambda) , \Sigma_{\mu_a} \right) 
+   \qquad 
+  \mu_a^\text{HbO2}(\lambda) \sim 
+       \mathcal{N}\left( \bar{\mu_a}^\text{HbO2}(\lambda) , \Sigma_{\mu_a} \right) 
+\]
+\[
+  \theta = 
+  \left(
+   \phi_1, ... , \phi_{N_\phi},
+  \mu_a^\text{HHb}(\lambda) ,
+  \mu_a^\text{HbO2}(\lambda)
+  \right)
+  \qquad \qquad \qquad
+   \vec{k} = \lambda
+\]
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Standard Diffusion Approximation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 The starting point for modeling light transport in tissue is the Boltzman
 equation for the radiance, $L(\mathbf{r},\hat{s})$.
 \begin{equation}\label{TransportEquation}
@@ -353,13 +366,8 @@ this is known as the P-n approximation\cite{Welch95,Modest2003}.
 \[
   L_s(\mathbf{r},\hat{s})  = \sum^\infty_i L_i(\mathbf{r}) P_i(\hat{s})
 \]
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Standard Diffusion Approximation}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-{\color{red}
 When only the first two terms are used, this is known as the
 P-1\cite{Modest2003} or diffusion approximation\cite{Modest2003}. 
-}
 \begin{equation} \label{DiffusionApproximation}
   L_s(\mathbf{r},\hat{s})  \approx \frac{1}{4 \pi} \varphi_d(\mathbf{r}) + \frac{3}{4} \mathbf{j}(\mathbf{r}) \cdot \hat{s}
 \end{equation}
@@ -401,50 +409,17 @@ $\mathbf{j}$ is the radiant flux, $\hat{z}$ is the direction of the collimated l
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Homogenious Coefficients}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\cite{fuentesetal10a}
-\textbf{
-This does not work for heterogenious case!!!
-The analytic solution uses method of undetermined coefficients
-which only works for homogenious case!!!
-}
-Consider Pennes model coupled to a diffusion theory model of light
-transport in tissue. The total fluence at a point is given by the
-sum of the scattered and primary light $\varphi_t(x,t) = z(x,t) + E(x,t)$.
-
 Through the diffusion model,
 the scattered fluence $z$ is obtained from the 
 known irradiance $E(x,t)$ (primary source of photons) 
-and its flux $\textbf{F}(x,t)$.
-\textbf{
-justified in calling $\textbf{F}(x,t)$  the flux of the irradiance ???
-}
-\[
-\nabla \cdot \left( \frac{1}{3 \mu_{tr} } \nabla \varphi_d(\mathbf{r}) \right)
- - \mu_a \varphi_d(\mathbf{r}) 
-= 
-- \mu_s^*  E(\mathbf{r})
-+   \nabla \cdot \left( \frac{g^* \mu_s^*}{\mu_{tr}} E(\mathbf{r}) \hat{s}_0 \right)
-\]
-\[
- \frac{1}{c(x)}
- \frac{\partial(z+E)}{\partial t}
- -{\color{red}\mu_a(\textbf{x})} z 
- +{\color{red}\mu_s^*(\textbf{x},m)} E
- = \nabla \cdot 
-   \left( 
-   - \frac{ \nabla z }{3\mu_{tr}(\textbf{x},m)} 
-   + \frac{ {\color{red}\mu_s^*}(\textbf{x},m) g^* }{3\mu_{tr}(\textbf{x},m)}
-       \textbf{F}
-   \right)
-\qquad
-  \mu_{tr}(\textbf{x},m)  = 
-                 {\color{red}\mu_a(\textbf{x},m)} + 
-                    {\color{red}\mu_s(\textbf{x},m)} (1-g)
-\]
+and its flux $\textbf{F}(x,t)$~\cite{fuentesetal10a}.
+The total fluence at a point is given by the
+sum of the scattered and primary light $\varphi_t(x,t) = z(x,t) + E(x,t)$.
 The irradiance is provided by a photon flux emitted throughout
 the domain of an interstitial laser fiber $\Omega_{tip}$.
 The photons are emittied by an applied power density,
-$P^* \left[\frac{W}{m^3}\right]$. Each position in the domain $\hat{x}$
+$P^* \left[\frac{W}{m^3}\right]$. Each position in the domain 
+$\hat{x} \in \Omega_{tip}$
 is treated as a point source of irradiance
 \[
 dE(x,\hat{x})= 
@@ -469,11 +444,9 @@ d\hat{x}
 \]
 \[
   \mu_t^*(\textbf{x},m)  = 
-                 {\color{red}\mu_a(\textbf{x},m)} + 
-                    {\color{red}\mu_s(\textbf{x},m)}  
+                 \mu_a(\textbf{x},m) + 
+                 \mu_s(\textbf{x},m)  
 \]
-\textbf{${\color{red}\mu_t(\textbf{x},m)}$ should be the average over
-the path length for the heterogenious case}.
 An analytic solution may be obtained by approximating the integral for
 the irradiance and flux as
 \[
@@ -502,12 +475,12 @@ $\hat{\textbf{x}}_e$ is the centroid.
 By linearity, each element in the discretization may be treated as
 an uncoupled and independent source in the light diffusion equation.
 \[
- -{\color{red}\mu_a(\textbf{x})} z_e 
- +{\color{red}\mu_s^*(\textbf{x},m)} E_e
+ -{\color{black}\mu_a(\textbf{x})} z_e 
+ +{\color{black}\mu_s^*(\textbf{x},m)} E_e
  = \nabla \cdot 
    \left( 
    - \frac{ \nabla z_e }{3\mu_{tr}(\textbf{x},m)} 
-   + \frac{ {\color{red}\mu_s^*}(\textbf{x},m) g^* }{3\mu_{tr}(\textbf{x},m)} 
+   + \frac{ {\color{black}\mu_s^*}(\textbf{x},m) g^* }{3\mu_{tr}(\textbf{x},m)} 
        (\textbf{F})_e
    \right) \qquad \forall e \in \Omega_{tip}
 \]
@@ -518,41 +491,25 @@ The total emanating fluence is the superposition of the element wise
 solutions and reduces to a volume weighted sum over the elements.
 \[
    \varphi_t = \sum_{e \in \Omega_{tip}}
- {\color{red}P^*(t)}  V_e  \left(
-   \frac{3\mu_{tr} \exp(-\mu_{eff} \|\textbf{x} -{\color{red}\textbf{x}_e}\|) }
-      {4\pi \|\textbf{x}-{\color{red}\textbf{x}_e}\|}
+ {\color{black}P^*(t)}  V_e  \left(
+   \frac{3\mu_{tr} \exp(-\mu_{eff} \|\textbf{x} -{\color{black}\textbf{x}_e}\|) }
+      {4\pi \|\textbf{x}-{\color{black}\textbf{x}_e}\|}
  - 
       \frac{ 
-             \exp(-\mu_t^* \|\textbf{x} -{\color{red}\textbf{x}_e}\|) }
-           {2\pi \|\textbf{x}-{\color{red}\textbf{x}_e}\|^2}
+             \exp(-\mu_t^* \|\textbf{x} -{\color{black}\textbf{x}_e}\|) }
+           {2\pi \|\textbf{x}-{\color{black}\textbf{x}_e}\|^2}
    \right)
 \approx
     \sum_{e \in \Omega_{tip}}
- {\color{red}P^*(t)}  V_e 
-   \frac{3\mu_{tr} \exp(-\mu_{eff} \|\textbf{x} -{\color{red}\textbf{x}_e}\|) }
-      {4\pi \|\textbf{x}-{\color{red}\textbf{x}_e}\|}
+ {\color{black}P^*(t)}  V_e 
+   \frac{3\mu_{tr} \exp(-\mu_{eff} \|\textbf{x} -{\color{black}\textbf{x}_e}\|) }
+      {4\pi \|\textbf{x}-{\color{black}\textbf{x}_e}\|}
 \]
 \[
  \mu_{eff}(\textbf{x},m)  = 
-           \sqrt{ 3 {\color{red}\mu_a(\textbf{x},m)} \mu_{tr}(\textbf{x},m) }
+           \sqrt{ 3 {\color{black}\mu_a(\textbf{x},m)} \mu_{tr}(\textbf{x},m) }
 \]
 
-\[
-\begin{split}
- \rho  c_p \frac{\partial u}{\partial t}
- -\nabla \cdot ( k(u,\textbf{x}) \nabla u) 
- +\omega(u,\textbf{x})c_{blood} (u - u_a )
-  &  = 
- P(t)
-   \frac{\mu_{eff}^2 \exp(-\mu_{eff}(u,\textbf{x})  
-         \|\textbf{x} -\textbf{x}_e\|) }
-      {4\pi \|\textbf{x}-\textbf{x}_e\|}
-\\
- k \nabla u \cdot n    = h (u - u_\infty)  \quad x \in \partial \Omega_\text{tip}
-\qquad & \qquad
- k \nabla u \cdot n    = 0                 \quad x \in \partial \Omega
-\end{split}
-\]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Wave Propagation}\label{WavePropagation}
@@ -565,6 +522,100 @@ utilized....
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{User Interface}\label{UserInterface}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The MATLAB script \texttt{exampleRecon.m} computes the wavelength
+sensitivity in two steps.
+\begin{enumerate}
+\item
+Uncertainty quantification techniques are applied to compute the variance
+of the photoacoustic source $S(r)[?]$, 
+Section~\ref{GeneralMathFramework} and Section~\ref{FluenceSource}.
+\item  Sensitivity statistics are propagated through our photo acoustic
+model for the wave propagation, Section~\ref{WavePropagation}.
+\end{enumerate}
+The SDA fluence model is  proportional to 
+photoacoustic source, $S(r)$,
+with a proportionality constant given by the
+Gruneisen parameter, $\Gamma$ \\
+\fbox{\begin{minipage}{.9\textwidth}
+\[
+  \text{PA source} =   S(r) = 
+  \Gamma  \mu_a \varphi_t  \propto 
+ \sum_e
+ P^*(t) V_e
+   \frac{\mu_{eff}^2 \exp(-\mu_{eff}(\textbf{x})  
+         \|\textbf{x} -\textbf{x}_e\|) }
+      {4\pi \|\textbf{x}-\textbf{x}_e\|}
+\]
+\[
+  \mu_{eff}  = \sqrt{ 3 {\mu_a} \mu_{tr} }
+\quad
+ \mu_{tr} = \mu_a  + \mu_s (1-g)
+\]
+\[
+\mu_a(\lambda,x) = \phi(x) \mu_a^\text{HHb} (\lambda) + (1-\phi(x))\mu_a^\text{HbO2}(\lambda)
+\]
+\[
+  \Omega = \cup_j \Omega_j
+  \qquad \qquad
+  \Omega_i \cap \Omega_j = \emptyset  \quad i \neq j
+  \qquad \qquad
+  \psi_j(x) = 
+  \left\{
+  \begin{split}
+   1 & \quad x    \in \Omega_j \\
+   0 & \quad x \notin \Omega_j \\
+  \end{split}
+   \right.
+   \qquad
+ \phi(x)  = \sum_{j=1}^{N_\phi} \phi_j \psi_j(x) 
+\]
+\[ 
+   \phi_j \sim \mathcal{U}(0,1) 
+   \qquad 
+  \mu_a^\text{HHb}(\lambda) \sim 
+       \mathcal{N}\left( \bar{\mu_a}^\text{HHb}(\lambda) , \Sigma_{\mu_a} \right) 
+   \qquad 
+  \mu_a^\text{HbO2}(\lambda) \sim 
+       \mathcal{N}\left( \bar{\mu_a}^\text{HbO2}(\lambda) , \Sigma_{\mu_a} \right) 
+\]
+\[
+  \theta = 
+  \left(
+   \phi_1, ... , \phi_{N_\phi},
+  \mu_a^\text{HHb}(\lambda) ,
+  \mu_a^\text{HbO2}(\lambda)
+  \right)
+  \qquad \qquad \qquad
+   \vec{k} = \lambda
+\]
+\end{minipage} }
+\[
+   \text{Var}(S(r))
+\]
+\[ \begin{split}
+   \bar{Z} = \mathbb{E}[Z]  & = \int_Z   dz \; z
+   \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
+  \\
+   \mathbb{E}[ ( Z - \bar{Z} )^2 ]  & = \int_Z   dz \;(z - \bar{Z})^2 
+   \underbrace{\int_\theta  d\theta \; p(z|\theta) \; p(\theta)}_{p(z)}
+  \\
+   &  \propto
+    \int_Z   dz \;(z - \bar{z})^2 \int_\theta  d\theta 
+ \exp\left( - \frac{1}{2} \|  z- \mathcal{G}(\vec{k},\theta)  \|^2_{\Sigma_z}\right)
+ \exp\left( - \frac{1}{2} \|  \theta - \hat{\theta}  \|^2_{\Sigma_\theta}\right)
+ \end{split}
+\]
+
+\begin{figure}[h]
+\centering
+\scalebox{0.27}{\includegraphics{\picdir/MeshTemplate.png}}
+\caption{ Mesh Template.
+} \label{DistributionComparison}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \nocite{*}
 \bibliographystyle{apalike}
