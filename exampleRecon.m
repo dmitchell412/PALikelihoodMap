@@ -9,7 +9,7 @@ npixel   = 100;
 materialID = int32(10*phantom3d('Modified Shepp-Logan',npixel));
 materialID(materialID == 3  ) = 1;
 materialID(materialID == 10 ) = 3;
-handle3 = figure(3)
+handle5 = figure(5);
 imagesc(materialID(:,:,npixel/2),[0 3])
 colorbar
 
@@ -42,8 +42,6 @@ power      = 10.;
 % initialize on host and perform ONE transfer from host to device
 h_pasource     = zeros(npixel,npixel,npixel);
 d_pasource      = gpuArray( h_pasource  );
-d_pasourceMean  = gpuArray( h_pasource  );
-d_pasourceVar   = gpuArray( h_pasource  );
 
 %% Compile and setup thread grid
 % grid stride loop design pattern, 1-d grid
@@ -61,8 +59,8 @@ mueff      = [5.e02 , 4.e02 , 3.e02];
 h_pasource  = gather( d_pasource  );
 
 %%  plot pasource
-handle4 = figure(4)
-imagesc(h_pasource(:,:,50), [37 100]);
+handle6 = figure(6);
+imagesc(h_pasource(:,:,50), [0 2.e5]);
 colormap default
 colorbar
 
@@ -71,12 +69,15 @@ mixinggrid = [.2, .4, .6, .8]
 
 %%  global search and plot exhaustive search
 tic
-meanfigurenames = {'meanpasourcelo','meanpasourcehi'}
+statfigurenames = {'meanpasourcelo','varpasourcelo','meanpasourcehi','varpasourcehi'}
 for idLambda = 1:numel(mueffHbO2) 
   %% UQ grid 
   HHbgrid  =  sigmamueff * [-2,-1,0,1,2] + mueffHHb(idLambda)
   HbO2grid =  sigmamueff * [-2,-1,0,1,2] + mueffHbO2(idLambda)
   TotalIter = numel(mixinggrid) * numel(mixinggrid) * numel(mixinggrid) * numel(HHbgrid) * numel(HbO2grid);
+  IterCount = 0; 
+  % mean
+  d_pasourceMean  = gpuArray( zeros(npixel,npixel,npixel)  );
   for idOne = 1: numel(mixinggrid)
     % show iterations
     disp(sprintf('iter %d',idOne));
@@ -84,14 +85,39 @@ for idLambda = 1:numel(mueffHbO2)
       for idThree = 1: numel(mixinggrid)
         for idFour = 1: numel(HHbgrid)
           for idFive = 1: numel(HbO2grid)
-              mueff = [   mixinggrid(idOne)   *HHbgrid( idFour)+ (1-mixinggrid(idOne))  *HbO2grid(idFive),...
-                          mixinggrid(idTwo)   *HHbgrid( idFour)+ (1-mixinggrid(idTwo))  *HbO2grid(idFive),...
-                          mixinggrid(idThree) *HHbgrid( idFour)+ (1-mixinggrid(idThree))*HbO2grid(idFive)];
-              %if mod(iii,100 )==0
-                %disp(sprintf(' %f ',mueff));
-              %end
+             mueff = [   mixinggrid(idOne)   *HHbgrid( idFour)+ (1-mixinggrid(idOne))  *HbO2grid(idFive),...
+                         mixinggrid(idTwo)   *HHbgrid( idFour)+ (1-mixinggrid(idTwo))  *HbO2grid(idFive),...
+                         mixinggrid(idThree) *HHbgrid( idFour)+ (1-mixinggrid(idThree))*HbO2grid(idFive)];
+             IterCount =  IterCount +1;  
+             if mod(IterCount,100 )==0
+               disp(sprintf(' %d %f %f %f ', IterCount, mueff));
+             end
              [p_pasource] = feval(ssptx,ntissue,materialID, mueff, nsource, power ,xloc,yloc,zloc, d_pasource,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
-              d_pasourceMean  = d_pasourceMean + 1./TotalIter* p_pasource;
+             d_pasourceMean  = d_pasourceMean  + 1./TotalIter * p_pasource;
+  end
+  end
+  end
+  end
+  end
+  IterCount = 0; 
+  % variance
+  d_pasourceVar  = gpuArray( zeros(npixel,npixel,npixel)  );
+  for idOne = 1: numel(mixinggrid)
+    % show iterations
+    disp(sprintf('iter %d',idOne));
+    for idTwo = 1: numel(mixinggrid)
+      for idThree = 1: numel(mixinggrid)
+        for idFour = 1: numel(HHbgrid)
+          for idFive = 1: numel(HbO2grid)
+             mueff = [   mixinggrid(idOne)   *HHbgrid( idFour)+ (1-mixinggrid(idOne))  *HbO2grid(idFive),...
+                         mixinggrid(idTwo)   *HHbgrid( idFour)+ (1-mixinggrid(idTwo))  *HbO2grid(idFive),...
+                         mixinggrid(idThree) *HHbgrid( idFour)+ (1-mixinggrid(idThree))*HbO2grid(idFive)];
+             IterCount =  IterCount +1;  
+             if mod(IterCount,100 )==0
+               disp(sprintf(' %d %f %f %f ', IterCount, mueff));
+             end
+             [p_pasource] = feval(ssptx,ntissue,materialID, mueff, nsource, power ,xloc,yloc,zloc, d_pasource,spacingX,spacingY,spacingZ,npixel,npixel,npixel);
+             d_pasourceVar= d_pasourceVar + 1./(TotalIter-1) * (p_pasource - d_pasourceMean  ).*(p_pasource - d_pasourceMean  );
  end
  end
  end
@@ -99,14 +125,26 @@ for idLambda = 1:numel(mueffHbO2)
  end
  % gather
  host_Mean = gather(d_pasourceMean );
+ host_Std  = sqrt(gather(d_pasourceVar  )); 
+
  % plot
- handleid = figure(idLambda)
- imagesc(host_Mean(:,:,50), [37 100]);
+ idplot  =  2*(idLambda-1) +1;
+ handleid = figure( idplot   );
+ imagesc(host_Mean(:,:,50), [0 2.e+05]);
  colormap default
  colorbar
- saveas(handleid,meanfigurenames{idLambda},'png')
+ saveas(handleid,statfigurenames{idplot },'png')
+
+ % plot
+ idplot =  2*idLambda;
+ handleid = figure(  idplot );
+ % gather
+ imagesc(host_Std(:,:,50), [0 1.e5]);
+ colormap default
+ colorbar
+ saveas(handleid,statfigurenames{idplot },'png')
 end
 toc
 
-saveas(handle3,'material','png')
-saveas(handle4,'pasource','png')
+saveas(handle5,'material','png')
+saveas(handle6,'pasource','png')
