@@ -15,7 +15,7 @@ Publish
 =======
 opts.outputDir = '.';
 opts.format = 'pdf';
-publish('exampleSSGPU',opts)
+publish('exampleRecon',opts)
 
 
 
