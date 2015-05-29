@@ -36,4 +36,6 @@ resamplecmd = '/opt/apps/ANTsR/dev//ANTsR_src/ANTsR/src/ANTS/ANTS-build//bin/War
 savevtkcmd  = 'c3d  bmoderesample.nii.gz -o bmoderesample.vtk; sed -i ''s/scalars/bmode/g'' bmoderesample.vtk';
 maskcmd     = '/opt/apps/itksnap/c3d-1.0.0-Linux-x86_64/bin/c3d -verbose  bmoderesample.nii.gz -thresh 50 inf 1 0 -connected-components -threshold 1 1 1 0 -dilate 1 2x2x2vox -erode 1 2x2x2vox  -o bmodemask.nii.gz';
 segmentationcmd = '/opt/apps/ANTsR/dev//ANTsR_src/ANTsR/src/ANTS/ANTS-build//bin/Atropos -d 3 -a bmoderesample.nii.gz  -x bmodemask.nii.gz -i kmeans[3]  -c [3,0.0] -m [0.1,1x1x1] -k Gaussian -o [bmode_ATROPOS_GMM.nii.gz,bmode_ATROPOS_GMM_POSTERIORS%d.nii.gz]';
+tumormaskcmd   = '/opt/apps/itksnap/c3d-1.0.0-Linux-x86_64/bin/c3d -verbose  bmode_ATROPOS_GMM.nii.gz -thresh 1 1 1 0 -connected-components -threshold 1 1 1 0  -dilate 1 5x5x5vox -o tumormask.nii.gz'
+tumorsegmentationcmd = '/opt/apps/ANTsR/dev//ANTsR_src/ANTsR/src/ANTS/ANTS-build//bin/Atropos -d 3 -a bmoderesample.nii.gz  -x tumormask.nii.gz -i kmeans[5]  -c [3,0.0] -m [0.1,1x1x1] -k Gaussian -o [tumor_ATROPOS_GMM.nii.gz,tumor_ATROPOS_GMM_POSTERIORS%d.nii.gz]';
 disp(resamplecmd ); disp(savevtkcmd  ); disp(maskcmd     ); disp(segmentationcmd);
