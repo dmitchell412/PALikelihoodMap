@@ -1,5 +1,5 @@
 .PHONY: doc rtf
-all: doc
+all: sdaSpectralFluenceModel.ptx
 #
 # file : Makefile (UNIX)
 #
@@ -30,6 +30,8 @@ CUDADIR = /opt/apps/cuda/5.5/
 # The following are the definitions for each target individually.
 
 sdaFluenceModel.ptx:   sdaFluenceModel.cu
+	$(CUDADIR)/bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   $<
+sdaSpectralFluenceModel.ptx:   sdaSpectralFluenceModel.cu
 	$(CUDADIR)/bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   $<
 
 tags:
