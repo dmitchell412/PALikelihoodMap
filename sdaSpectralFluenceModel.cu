@@ -90,8 +90,12 @@ void sdaFluenceModel(
            // superposition
            fluence = fluence + sourcefluence/((double)NSource); 
           }
-        // store fluence in array
-        d_PASourceArray[idx] = fluence;
+        // store fluence in array only in tumor mask
+        if( !idmaterial ) 
+            d_PASourceArray[idx] = 0.0;
+        else
+            d_PASourceArray[idx] = fluence;
+    
       }
 }
 

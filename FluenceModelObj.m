@@ -1,14 +1,8 @@
-function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,muaHHb, muaHbOTwo,materialID,PAData,nsource,power,xloc,yloc,zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
-
-%% initialize data arrays
-% initialize on host and perform ONE transfer from host to device
-h_pasource     = zeros(npixelx,npixely,npixelz);
-d_pasource      = gpuArray( h_pasource  );
+function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,power,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
 
 % objective function is l2 distance from each wavelength
 ObjectiveFunctionValue = 0.0;
-for iii= 1:length(muaHHb)
-    [d_pasource ] = feval(ssptx,materialID,VolumeFraction, muaHHb(iii),muaHbOTwo(iii), nsource, power ,xloc,yloc,zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
-    h_pasource = gather(d_pasource);
-    ObjectiveFunctionValue = ObjectiveFunctionValue + norm( h_pasource(:)-PAData(:,iii) ) ;
+for idwavelength= 1:length(muaHHb)
+    [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+    ObjectiveFunctionValue = ObjectiveFunctionValue + norm( d_pasource(:)-d_PAData(:,idwavelength) ) ;
 end
