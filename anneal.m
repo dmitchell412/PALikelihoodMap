@@ -1,4 +1,4 @@
-function [minimum,fval] = anneal(loss, parent, options)
+function [minimum,fval,OptHistory] = anneal(loss, parent, options)
 % ANNEAL  Minimizes a function with the method of simulated annealing
 % (Kirkpatrick et al., 1983)
 %
@@ -97,10 +97,9 @@ function [minimum,fval] = anneal(loss, parent, options)
 %   joachim.vandekerckhove@psy.kuleuven.be
 %   $Revision: v5 $  $Date: 2006/04/26 12:54:04 $
 
-%'Generator',@(x) (x+(randperm(length(x))==length(x))*(rand-.5)/5)
 def = struct(...
         'CoolSched',@(T) (.8*T),...
-        'Generator',@(x) (rand(1,length(x))),...
+        'Generator',@(x) (x+(randperm(length(x))==length(x))*(rand-.5)/5),...
         'InitTemp',1,...
         'MaxConsRej',1000,...
         'MaxSuccess',20,...
@@ -148,6 +147,7 @@ finished = 0;
 consec = 0;
 T = Tinit;
 initenergy = loss(parent);
+OptHistory = [parent,initenergy];
 oldenergy = initenergy;
 total = 0;
 if report==2, fprintf(1,'\n  T = %7.5f, loss = %10.5f\n',T,oldenergy); end
@@ -175,6 +175,7 @@ while ~finished;
     
     newparam = newsol(current);
     newenergy = loss(newparam);
+    OptHistory = [OptHistory;newparam,newenergy];
     fprintf(1,'new %6.3e newparam=',newenergy );
     fprintf(1,' %6.3e',newparam);
     

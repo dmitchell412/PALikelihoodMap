@@ -56,6 +56,7 @@ colorbar
 %% load tumor mask
 tumormask =load_untouch_nii('tumormask.nii.gz');
 
+PAPlotRange = [0 1.5e1];
 % load data
 disp('loading PA data');
 h_PAData = zeros(npixelx* npixely* npixelz,NWavelength);  
@@ -63,7 +64,7 @@ for idwavelength = 1:NWavelength
   padatanii = load_untouch_nii(['padata.' sprintf('%04d',idwavelength) '.nii.gz']) ;
   % view data
   handle = figure(idwavelength);
-  imagesc(log(tumormask.img(:,:,idslice).*padatanii.img(:,:,idslice )),[0 1.5e1])
+  imagesc(log(tumormask.img(:,:,idslice).*padatanii.img(:,:,idslice )),PAPlotRange )
   colorbar
   % store data array
   h_PAData(:,idwavelength) = tumormask.img(:).*padatanii.img(:) ;
@@ -73,7 +74,7 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-maxpower      = 100.;
+maxpower      = 2.;
 
 %% Query the device
 % GPU must be reset on out of bounds errors
@@ -125,14 +126,20 @@ loss = @(x) FluenceModelObj([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO
 
 %% run opt solver
 disp('starting solver')
-[SolnVector FunctionValue] = anneal(loss,InitialGuess)
+options = anneal();
+%options.MaxTries = 2;
+%options.MaxConsRej = 1;
+options.Generator = @(x) (rand(1,length(x)));
+[SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options)
+%SolnVector = [ 6.758e-02,4.987e-01,3.796e-01,1.657e-01,8.022e-01,1.084e-03 ];
 
-%% plot
-%=VolumeFraction;
-%for idwavelength= 1:NWavelength
-%  [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
-%  h_pasource    = gather(d_pasource );
-%  handle = figure(NWavelength+ idwavelength);
-%  imagesc(log(h_pasource(:,:,idslice )),[0 1.5e1])
-%  colorbar
-%end
+% plot
+VolumeFraction = [0,SolnVector(1:length(SolnVector)-1)]; 
+power          =    SolnVector(  length(SolnVector)) * maxpower;
+for idwavelength= 1:NWavelength
+  [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+  h_pasource    = gather(d_pasource );
+  handle = figure(NWavelength+ idwavelength);
+  imagesc(log(h_pasource(:,:,idslice )),PAPlotRange)
+  colorbar
+end
