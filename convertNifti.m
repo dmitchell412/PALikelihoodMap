@@ -28,7 +28,7 @@ system(savevtkcmd);
 for iii = 1:size(exampledata.Wave,2)
   padatanii = make_nii(exampledata.PA(:,:,:,iii),PASpacing);
   save_nii(padatanii,['padata.' sprintf('%04d',iii) '.nii.gz']) ;
-  savevtkcmd = ['c3d  padata.' sprintf('%04d',iii) '.nii.gz -o padata.' sprintf('%04d',iii) '.vtk']
+  savevtkcmd = ['c3d  padata.' sprintf('%04d',iii) '.nii.gz tumormask.nii.gz -multiply -o padata.' sprintf('%04d',iii) '.vtk']
   system(savevtkcmd);
 end
 

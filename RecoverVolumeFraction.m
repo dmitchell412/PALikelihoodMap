@@ -130,8 +130,9 @@ options = anneal();
 %options.MaxTries = 2;
 %options.MaxConsRej = 1;
 options.Generator = @(x) (rand(1,length(x)));
-[SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options)
+[SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options);
 %SolnVector = [ 6.758e-02,4.987e-01,3.796e-01,1.657e-01,8.022e-01,1.084e-03 ];
+%SolnVector = [ 0.95875  ,  0.77622,0.10041  , 0.067474,0.25271  ,0.0019434 ]; 
 
 % plot
 VolumeFraction = [0,SolnVector(1:length(SolnVector)-1)]; 
@@ -139,7 +140,13 @@ power          =    SolnVector(  length(SolnVector)) * maxpower;
 for idwavelength= 1:NWavelength
   [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
   h_pasource    = gather(d_pasource );
+  pasolnnii = make_nii(h_pasource,tumorlabel.hdr.dime.pixdim(2:4),[],[],'pasoln');
+  save_nii(pasolnnii,['pasoln.' sprintf('%04d',idwavelength) '.nii.gz']) ;
+  savevtkcmd = ['c3d  pasoln.' sprintf('%04d',idwavelength) '.nii.gz -o pasoln.' sprintf('%04d',idwavelength) '.vtk; sed -i ''s/scalars/pasoln/g'' pasoln.' sprintf('%04d',idwavelength) '.vtk '];
+  [status result] = system(savevtkcmd);
   handle = figure(NWavelength+ idwavelength);
   imagesc(log(h_pasource(:,:,idslice )),PAPlotRange)
   colorbar
 end
+
+
