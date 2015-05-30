@@ -103,8 +103,13 @@ threadsPerBlock= 768;
 ssptx.ThreadBlockSize=[threadsPerBlock  1]
 
 %% initial guess
-VolumeFraction = [0;rand(ntissue,1)];
-power = rand(1) * maxpower;
+%% materialID[0] not used
+%% assume 50/50 volume fraction initially
+%% last entry is percent power
+InitialGuess = [.5*ones(ntissue,1);.6]';
+
+%% create anonymous function
+loss = @(x) FluenceModelObj([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
 
 %% % tune kernel
 %% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
@@ -112,18 +117,22 @@ power = rand(1) * maxpower;
 %%   ssptx.GridSize=[blockpergrid 1];
 %%   ssptx.ThreadBlockSize=[threadsPerBlock  1];
 %%   tic;
-%%   f = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,power,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+%%   f = loss(InitialGuess)
 %%   kernelruntime = toc;
 %%   disp(sprintf('blockpergrid=%d  threadsPerBlock=%d runtime=%f',blockpergrid,threadsPerBlock,kernelruntime));
 %% end
 %% end
 
-% plot
-SolnVolumeFraction=VolumeFraction;
-for idwavelength= 1:NWavelength
-  [d_pasource ] = feval(ssptx,d_materialID,SolnVolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
-  h_pasource    = gather(d_pasource );
-  handle = figure(NWavelength+ idwavelength);
-  imagesc(log(h_pasource(:,:,idslice )),[0 1.5e1])
-  colorbar
-end
+%% run opt solver
+disp('starting solver')
+[SolnVector FunctionValue] = anneal(loss,InitialGuess)
+
+%% plot
+%=VolumeFraction;
+%for idwavelength= 1:NWavelength
+%  [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+%  h_pasource    = gather(d_pasource );
+%  handle = figure(NWavelength+ idwavelength);
+%  imagesc(log(h_pasource(:,:,idslice )),[0 1.5e1])
+%  colorbar
+%end

@@ -6,3 +6,4 @@ for idwavelength= 1:length(muaHHb)
     [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
     ObjectiveFunctionValue = ObjectiveFunctionValue + norm( d_pasource(:)-d_PAData(:,idwavelength) ) ;
 end
+%disp([VolumeFraction,power,ObjectiveFunctionValue]);

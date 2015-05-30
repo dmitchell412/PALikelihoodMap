@@ -97,16 +97,17 @@ function [minimum,fval] = anneal(loss, parent, options)
 %   joachim.vandekerckhove@psy.kuleuven.be
 %   $Revision: v5 $  $Date: 2006/04/26 12:54:04 $
 
+%'Generator',@(x) (x+(randperm(length(x))==length(x))*(rand-.5)/5)
 def = struct(...
         'CoolSched',@(T) (.8*T),...
-        'Generator',@(x) (x+(randperm(length(x))==length(x))*randn/100),...
+        'Generator',@(x) (rand(1,length(x))),...
         'InitTemp',1,...
         'MaxConsRej',1000,...
         'MaxSuccess',20,...
         'MaxTries',300,...
         'StopTemp',1e-8,...
         'StopVal',-Inf,...
-        'Verbosity',1);
+        'Verbosity',2);
 
 % Check input
 if ~nargin %user wants default options, give it and stop
@@ -174,6 +175,8 @@ while ~finished;
     
     newparam = newsol(current);
     newenergy = loss(newparam);
+    fprintf(1,'new %6.3e newparam=',newenergy );
+    fprintf(1,' %6.3e',newparam);
     
     if (newenergy < minF),
         parent = newparam; 
@@ -195,6 +198,9 @@ while ~finished;
             consec = consec+1;
         end
     end
+    fprintf(1,' old %6.3e parent =',oldenergy);
+    fprintf(1,' %6.3e',parent);
+    fprintf(1,' success %d consec %d\n',success,consec);
 end
 
 minimum = parent;
