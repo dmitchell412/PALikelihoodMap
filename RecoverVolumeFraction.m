@@ -47,7 +47,9 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-maxpower      = 1.0;
+PowerLB    = .5;
+PowerUB    =  2.0;
+PowerFnc   = @(x) PowerLB + x * (PowerUB-PowerLB);
 
 %% Query the device
 % GPU must be reset on out of bounds errors
@@ -78,7 +80,8 @@ ssptx.ThreadBlockSize=[threadsPerBlock  1]
 
 %% create anonymous function
 muaReference     = 3.e1; % [1/m]
-loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+% TODO - change function signature to use struct
+loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
 
 %% % tune kernel
 %% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
@@ -100,7 +103,8 @@ options = anneal();
 
 % use least square direction for proposal distribution
 % TODO - debug
-options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+% TODO - change function signature to use struct
+options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x)),PowerRange,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
 
 % TODO - use Monte Carlo for now
 options.Generator =  @(x) rand(1,length(x));
@@ -144,7 +148,7 @@ savevtkcmd = ['c3d volumefractionsoln.nii.gz -o volumefractionsoln.vtk ; sed -i 
 [status result] = system(savevtkcmd);
 
 % plot predict PA signal
-power      = SolnVector(  length(SolnVector) -1 ) *maxpower;
+power      = PowerFnc(SolnVector(  length(SolnVector) -1 ));
 muaHHb     = SolnVector(  length(SolnVector) )    *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
 muaHbO2    = SolnVector(  length(SolnVector) )    *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
 

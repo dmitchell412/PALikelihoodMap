@@ -1,7 +1,7 @@
-function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_materialID,d_PAData,nsource,powerFraction,MaxPower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
+function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_materialID,d_PAData,nsource,powerFraction,PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
 
 % get power setting
-power = powerFraction*MaxPower;
+power = PowerFnc(powerFraction);
 
 %% TODO - error check same length
 muaHHb     = muaFraction *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
