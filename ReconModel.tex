@@ -769,6 +769,19 @@ For annealing
             \right)
 \]
 
+We will use a local Gaussian approximation, $\mathcal{N}(m_k - H^{-1}g ,H^{-1})$, 
+to the proposal distribution~\cite{martin2012stochastic}.
+\[
+ q(y|m_k)  = \sqrt{\frac{\det{H}}{(2\; \pi)^n}} \exp\left( -\frac{
+               \|y-m_k+H^{-1}g\|^2_{H^{-1}}
+                }{2} \right)
+           = \sqrt{\frac{\det{H}}{(2\; \pi)^n}} \exp\left( -\frac{
+               \left(y-m_k+H^{-1}g\right)^\top \; H \; \left(y-m_k+H^{-1}g\right)
+                }{2} \right)
+\]
+
+
+
 \begin{figure}[h]
 \centering
 \begin{tabular}{cc}

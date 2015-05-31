@@ -75,7 +75,7 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-maxpower      = .1;
+maxpower      = .01;
 
 %% Query the device
 % GPU must be reset on out of bounds errors
