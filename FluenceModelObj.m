@@ -1,5 +1,38 @@
-function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,power,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
+function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_materialID,d_PAData,nsource,powerFraction,MaxPower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
 
+% get power setting
+power = powerFraction*MaxPower;
+
+%% TODO - error check same length
+muaHHb     = muaFraction *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
+muaHbO2    = muaFraction *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
+
+
+%% @article{wray1988characterization,
+%%   title={Characterization of the near infrared absorption spectra of
+%% cytochrome aa3 and haemoglobin for the non-invasive monitoring of cerebral
+%% oxygenation},
+%%   author={Wray, Susan and Cope, Mark and Delpy, David T and Wyatt, John S
+%% and Reynolds, E Osmund R},
+%%   journal={Biochimica et Biophysica Acta (BBA)-Bioenergetics},
+%%   volume={933},
+%%   number={1},
+%%   pages={184--192},
+%%   year={1988},
+%%   publisher={Elsevier}
+%% }
+%% 
+%% 
+%% @inproceedings{needles2010development,
+%%   title={Development of a combined photoacoustic micro-ultrasound system for
+%% estimating blood oxygenation},
+%%   author={Needles, A and Heinmiller, A and Ephrat, P and Bilan-Tracey, C and
+%% Trujillo, A and Theodoropoulos, C and Hirson, D and Foster, FS},
+%%   booktitle={Ultrasonics Symposium (IUS), 2010 IEEE},
+%%   pages={390--393},
+%%   year={2010},
+%%   organization={IEEE}
+%% }
 % objective function is l2 distance from each wavelength
 ObjectiveFunctionValue = 0.0;
 for idwavelength= 1:length(muaHHb)

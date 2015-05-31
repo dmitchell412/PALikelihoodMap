@@ -2,37 +2,9 @@ clear all
 close all
 format shortg
 
-%% mua for each species at each wave length  
-%% TODO - error check same length
+%% Spectral inversion for multiple wavelengths
 WaveLength = [680   , 710   , 750   , 850   , 920  , 950  ];
-muaHHb     = [1.e03 ,8.e02  ,8.e02  ,3.e02  ,3.2e02, 2.e02]; % [1/m]
-muaHbO2    = [3.e02 ,3.5e02 ,4.0e02 ,4.5e02 ,5.e02 , 6.e02]; % [1/m]
-%% @article{wray1988characterization,
-%%   title={Characterization of the near infrared absorption spectra of
-%% cytochrome aa3 and haemoglobin for the non-invasive monitoring of cerebral
-%% oxygenation},
-%%   author={Wray, Susan and Cope, Mark and Delpy, David T and Wyatt, John S
-%% and Reynolds, E Osmund R},
-%%   journal={Biochimica et Biophysica Acta (BBA)-Bioenergetics},
-%%   volume={933},
-%%   number={1},
-%%   pages={184--192},
-%%   year={1988},
-%%   publisher={Elsevier}
-%% }
-%% 
-%% 
-%% @inproceedings{needles2010development,
-%%   title={Development of a combined photoacoustic micro-ultrasound system for
-%% estimating blood oxygenation},
-%%   author={Needles, A and Heinmiller, A and Ephrat, P and Bilan-Tracey, C and
-%% Trujillo, A and Theodoropoulos, C and Hirson, D and Foster, FS},
-%%   booktitle={Ultrasonics Symposium (IUS), 2010 IEEE},
-%%   pages={390--393},
-%%   year={2010},
-%%   organization={IEEE}
-%% }
-NWavelength = length(muaHHb);
+NWavelength = length(WaveLength);
 
 %
 disp('loading GMM tissue types');
@@ -75,7 +47,7 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-maxpower      = .001;
+maxpower      = 1.0;
 
 %% Query the device
 % GPU must be reset on out of bounds errors
@@ -90,9 +62,9 @@ h_pasource   = zeros(npixelx,npixely,npixelz);
 d_pasource   = gpuArray( h_pasource  );
 d_PAData     = gpuArray( h_PAData    );
 d_materialID = gpuArray( materialID  );
-d_xloc     = gpuArray(1.e-3+ spacingX* rows );
-d_yloc     = gpuArray(1.e-3+ spacingY* cols );
-d_zloc     = gpuArray(1.e-3+ spacingZ* depth); 
+d_xloc       = gpuArray(1.e-3+ spacingX* rows );
+d_yloc       = gpuArray(1.e-3+ spacingY* cols );
+d_zloc       = gpuArray(1.e-3+ spacingZ* depth); 
 transfertime = toc;
 disp(sprintf('transfer time to device %f',transfertime));
 
@@ -104,14 +76,9 @@ ssptx.GridSize =[numSMs*8 1];
 threadsPerBlock= 768;
 ssptx.ThreadBlockSize=[threadsPerBlock  1]
 
-%% initial guess
-%% materialID[0] not used
-%% assume 50/50 volume fraction initially
-%% last entry is percent power
-InitialGuess = [.5*ones(ntissue,1);.6]';
-
 %% create anonymous function
-loss = @(x) FluenceModelObj([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+muaReference     = 3.e1; % [1/m]
+loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
 
 %% % tune kernel
 %% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
@@ -130,27 +97,57 @@ disp('starting solver')
 options = anneal();
 %options.MaxTries = 2;
 %options.MaxConsRej = 1;
+
 % use least square direction for proposal distribution
+% TODO - debug
 options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
 
+% TODO - use Monte Carlo for now
+options.Generator =  @(x) rand(1,length(x));
 
 % uniformly search parameter space to find good initial guess
 RandomInitialGuess = 10;
 RandomInitialGuess = 1;
+tic;
 for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
-  InitialGuess = rand(1,length(x));
+
+  %% initial guess
+  %% materialID[0] not used
+  %% assume 50/50 volume fraction initially
+  %% last entry is percent power
+  InitialGuess = [.5*ones(1,ntissue),.6,.9];
+
   [SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options);
   % TODO store best solution
 end
+mcmcruntime = toc;
+disp(sprintf('mcmc run time %f',mcmcruntime) );
+
+% write optimization history for scatter plot in R
+csvwrite('opthistory.csv',opthistory);
 
 %SolnVector = [ 6.758e-02,4.987e-01,3.796e-01,1.657e-01,8.022e-01,1.084e-03 ];
 %SolnVector = [ 0.95875  ,  0.77622,0.10041  , 0.067474,0.25271  ,0.0019434 ]; 
-%SolnVector = [ 1.48e-01, 2.95e-02, 1.60e-01, 2.63e-01, 6.43e-01, 1.57e-03 ];
+%SolnVector = [ 1.48e-01 , 2.95e-02, 1.60e-01, 2.63e-01, 6.43e-01, 1.57e-03 ];
+%SolnVector = [ 0.48858  , 0.25659 , 0.37129 , 0.16478 , 0.02466 , 0.38788  ];
 %f = loss(SolnVector )
 
-% plot
-VolumeFraction = [0,SolnVector(1:length(SolnVector)-1)]; 
-power          =    SolnVector(  length(SolnVector)) * maxpower;
+% plot volume fraction solution
+VolumeFraction = [0,SolnVector(1:length(SolnVector)-2)]; 
+VolumeFractionImg = double( materialID);
+for iii = 1:ntissue
+   VolumeFractionImg(materialID == iii  ) = VolumeFraction(iii);
+end
+volumefractionsolnnii = make_nii(VolumeFractionImg,tumorlabel.hdr.dime.pixdim(2:4),[],[],'volumefraction');
+save_nii(volumefractionsolnnii,'volumefractionsoln.nii.gz') ;
+savevtkcmd = ['c3d volumefractionsoln.nii.gz -o volumefractionsoln.vtk ; sed -i ''s/scalars/volfrac/g'' volumefractionsoln.vtk '];
+[status result] = system(savevtkcmd);
+
+% plot predict PA signal
+power      = SolnVector(  length(SolnVector) -1 ) *maxpower;
+muaHHb     = SolnVector(  length(SolnVector) )    *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
+muaHbO2    = SolnVector(  length(SolnVector) )    *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
+
 for idwavelength= 1:NWavelength
   [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
   h_pasource    = gather(d_pasource );
@@ -162,6 +159,4 @@ for idwavelength= 1:NWavelength
   imagesc(h_pasource(:,:,idslice ),PAPlotRange)
   colorbar
 end
-
-% TODO Scatter plot of opthistory
 

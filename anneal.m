@@ -177,7 +177,7 @@ while ~finished;
     newenergy = loss(newparam);
     OptHistory = [OptHistory;newparam,newenergy];
     fprintf(1,'new %5.2e newparam=',newenergy );
-    fprintf(1,' %5.2e',newparam);
+    fprintf(1,' %4.1e',newparam);
     
     if (newenergy < minF),
         parent = newparam; 
@@ -216,7 +216,7 @@ while ~finished;
     %    end
     %end
     fprintf(1,' old %5.2e accept %5.2e parent =',oldenergy,AcceptanceProbability );
-    fprintf(1,' %5.2e',parent);
+    fprintf(1,' %4.1e',parent);
     fprintf(1,' success %d consec %d\n',success,consec);
 end
 
