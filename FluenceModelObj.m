@@ -1,11 +1,11 @@
-function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_materialID,d_PAData,nsource,powerFraction,PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,PlotSolution)
+function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_maskimage,d_materialID,d_PAData,nsource,powerFraction,PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,PlotSolution)
 
 % get power setting
 power = PowerFnc(powerFraction);
 
 %% TODO - error check same length
-muaHHb     = muaFraction *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
-muaHbO2    = muaFraction *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
+muaHHb  =  1.e3*muaFraction *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
+muaHbO2 =       muaFraction *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
 
 
 %  write files as mm
@@ -38,8 +38,15 @@ ConvertToMM   = 1.e3;
 %% }
 % objective function is l2 distance from each wavelength
 ObjectiveFunctionValue = 0.0;
-for idwavelength= 1:length(muaHHb)
+minmodelPA = Inf;
+% HACK
+%for idwavelength= 1:length(muaHHb)
+for idwavelength= length(muaHHb):length(muaHHb)
     [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+    minPaWavelength = gather(min(d_pasource(:)./d_maskimage(:)));
+    if (minPaWavelength < minmodelPA )
+        minmodelPA =minPaWavelength ;
+    end
     l2distance = norm( d_pasource(:)-d_PAData(:,idwavelength) ) ;
     ObjectiveFunctionValue = ObjectiveFunctionValue + l2distance * l2distance ;
     if(PlotSolution)
@@ -53,7 +60,6 @@ for idwavelength= 1:length(muaHHb)
        %% colorbar
     end
 end
-%disp([VolumeFraction,power,ObjectiveFunctionValue]);
 
 % http://en.wikipedia.org/wiki/Multivariate_normal_distribution
 % L2 norm of distance is normalized to gaussian in calling routine.
@@ -65,8 +71,12 @@ end
 % NOTE - Gaussian normalization factors CANCEL
 %     1/2 is added to normalize Gaussian distribution
 %        normalize by variance to get acceptance probability
-Variance = 1.e9;
+Variance = 1.e8;
 ObjectiveFunctionValue = 0.5 *ObjectiveFunctionValue/Variance ; 
+
+% ignore zero solution fields
+disp([VolumeFraction,power,ObjectiveFunctionValue,minmodelPA ]);
+ObjectiveFunctionValue = ObjectiveFunctionValue + 100/minmodelPA ;
 
 if(PlotSolution)
   % plot volume fraction solution

@@ -26,6 +26,7 @@ system(savevtkcmd);
 
 %save pa data at each wavelength
 backgroundshift = [ 66.77914    , 55.57656    , 53.79084    , 70.75279    , 80.28145    , 75.00383   ];
+backgroundshift = zeros(1,6);
 
 
 for iii = 1:size(exampledata.Wave,2)

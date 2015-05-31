@@ -13,7 +13,7 @@ materialID = int32(tumorlabel.img);
 %materialID(materialID == 0  ) = 1;
 
 %% Initial Guess for volume fractions
-ntissue = max(max(max(materialID)));
+ntissue = max(materialID(:));
 
 [npixelx, npixely, npixelz] = size(materialID);
 spacingX = tumorlabel.hdr.dime.pixdim(2)*1.e-3;
@@ -47,8 +47,8 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-PowerLB    = .0001;
-PowerUB    =  .001;
+PowerLB    = .001;
+PowerUB    =  .01;
 PowerFnc   = @(x) PowerLB + x * (PowerUB-PowerLB);
 
 %% Query the device
@@ -64,6 +64,7 @@ h_pasource   = zeros(npixelx,npixely,npixelz);
 d_pasource   = gpuArray( h_pasource  );
 d_PAData     = gpuArray( h_PAData    );
 d_materialID = gpuArray( materialID  );
+d_maskimage  = gpuArray( maskimage   );
 d_xloc       = gpuArray(1.e-3+ spacingX* rows );
 d_yloc       = gpuArray(1.e-3+ spacingY* cols );
 d_zloc       = gpuArray(1.e-3+ spacingZ* depth); 
@@ -79,9 +80,9 @@ threadsPerBlock= 768;
 ssptx.ThreadBlockSize=[threadsPerBlock  1]
 
 %% create anonymous function
-muaReference     = 3.e1; % [1/m]
+muaReference     = 3.e-4; % [1/m]
 % TODO - change function signature to use struct
-loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,0);
+loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_maskimage,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,0);
 
 %% % tune kernel
 %% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
@@ -110,7 +111,7 @@ options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource
 options.Generator = @(x) rand(1,length(x));
 
 % set plotting function
-options.PlotLoss =  @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,1);
+options.PlotLoss =  @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference, d_maskimage, d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,1);
 
 % uniformly search parameter space to find good initial guess
 RandomInitialGuess = 10;
@@ -130,7 +131,5 @@ end
 mcmcruntime = toc;
 disp(sprintf('mcmc run time %f',mcmcruntime) );
 
-%SolnVector = [ 7.2e-01 9.9e-01 1.9e-01 5.9e-01 7.0e-03 8.9e-02 2.9e-02];
-%f = plotloss(SolnVector )
-
-
+%SolnVector = [ 7.3e-01 2.3e-01 5.8e-01 8.1e-01 4.0e-01 9.9e-01 9.0e-02 ];
+%f = options.PlotLoss(SolnVector )
