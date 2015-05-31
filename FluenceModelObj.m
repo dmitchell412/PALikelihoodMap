@@ -8,6 +8,9 @@ muaHHb     = muaFraction *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.666
 muaHbO2    = muaFraction *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
 
 
+%  write files as mm
+ConvertToMM   = 1.e3;
+
 %% @article{wray1988characterization,
 %%   title={Characterization of the near infrared absorption spectra of
 %% cytochrome aa3 and haemoglobin for the non-invasive monitoring of cerebral
@@ -41,7 +44,7 @@ for idwavelength= 1:length(muaHHb)
     ObjectiveFunctionValue = ObjectiveFunctionValue + l2distance * l2distance ;
     if(PlotSolution)
        h_pasource    = gather(d_pasource );
-       pasolnnii = make_nii(h_pasource,[spacingX,spacingY,spacingZ],[],[],'pasoln');
+       pasolnnii = make_nii(h_pasource,ConvertToMM *[spacingX,spacingY,spacingZ],[],[],'pasoln');
        save_nii(pasolnnii,['pasoln.' sprintf('%04d',idwavelength) '.nii.gz']) ;
        savevtkcmd = ['c3d  pasoln.' sprintf('%04d',idwavelength) '.nii.gz -o pasoln.' sprintf('%04d',idwavelength) '.vtk; sed -i ''s/scalars/pasoln/g'' pasoln.' sprintf('%04d',idwavelength) '.vtk '];
        [status result] = system(savevtkcmd);
@@ -72,7 +75,7 @@ if(PlotSolution)
   for iii = 1:ntissue
      VolumeFractionImg(VolumeFractionImg== iii  ) = VolumeFraction(iii);
   end
-  volumefractionsolnnii = make_nii(VolumeFractionImg,[spacingX,spacingY,spacingZ],[],[],'volumefraction');
+  volumefractionsolnnii = make_nii(VolumeFractionImg, ConvertToMM * [spacingX,spacingY,spacingZ],[],[],'volumefraction');
   save_nii(volumefractionsolnnii,'volumefractionsoln.nii.gz') ;
   savevtkcmd = ['c3d volumefractionsoln.nii.gz -o volumefractionsoln.vtk ; sed -i ''s/scalars/volfrac/g'' volumefractionsoln.vtk '];
   [status result] = system(savevtkcmd);
