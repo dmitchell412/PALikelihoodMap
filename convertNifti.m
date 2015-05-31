@@ -25,10 +25,13 @@ savevtkcmd  = 'c3d  bmode.nii.gz -o bmode.vtk';
 system(savevtkcmd);
 
 %save pa data at each wavelength
+backgroundshift = [ 66.77914    , 55.57656    , 53.79084    , 70.75279    , 80.28145    , 75.00383   ];
+
+
 for iii = 1:size(exampledata.Wave,2)
-  padatanii = make_nii(exampledata.PA(:,:,:,iii),PASpacing);
+  padatanii = make_nii(exampledata.PA(:,:,:,iii) - backgroundshift(iii) ,PASpacing);
   save_nii(padatanii,['padata.' sprintf('%04d',iii) '.nii.gz']) ;
-  savevtkcmd = ['c3d  padata.' sprintf('%04d',iii) '.nii.gz tumormask.nii.gz -multiply -o padata.' sprintf('%04d',iii) '.vtk']
+  savevtkcmd = ['c3d  padata.' sprintf('%04d',iii) '.nii.gz tumormask.nii.gz -multiply -o padata.' sprintf('%04d',iii) '.vtk; sed -i ''s/scalars/padata/g'' padata.' sprintf('%04d',iii) '.vtk']
   system(savevtkcmd);
 end
 

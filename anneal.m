@@ -176,8 +176,8 @@ while ~finished;
     newparam = newsol(current);
     newenergy = loss(newparam);
     OptHistory = [OptHistory;newparam,newenergy];
-    fprintf(1,'new %6.3e newparam=',newenergy );
-    fprintf(1,' %6.3e',newparam);
+    fprintf(1,'new %5.2e newparam=',newenergy );
+    fprintf(1,' %5.2e',newparam);
     
     if (newenergy < minF),
         parent = newparam; 
@@ -185,22 +185,38 @@ while ~finished;
         break
     end
     
-    if (oldenergy-newenergy > 1e-6)
+    % metropolis hastings acceptance criteria
+    %% % normalize the objective function value to a Gaussian Probability with identity covariance
+    %% %    http://en.wikipedia.org/wiki/Multivariate_normal_distribution
+    %% % TODO - add non-identity covariance, ie signal noise
+    %% datadimension = npixelx*npixely*npixelz*length(muaHHb);
+    %% ModelProbability  = exp(-.5*ObjectiveFunctionValue )/sqrt( (2 * pi)^datadimension );
+    %% % NOTE - Gaussian normalization factors CANCEL
+    AcceptanceProbability = exp( (oldenergy-newenergy)/(k*T) ); 
+    if (rand < min(1,AcceptanceProbability));
         parent = newparam;
         oldenergy = newenergy;
         success = success+1;
         consec = 0;
     else
-        if (rand < exp( (oldenergy-newenergy)/(k*T) ));
-            parent = newparam;
-            oldenergy = newenergy;
-            success = success+1;
-        else
-            consec = consec+1;
-        end
+        consec = consec+1;
     end
-    fprintf(1,' old %6.3e parent =',oldenergy);
-    fprintf(1,' %6.3e',parent);
+    %if (oldenergy-newenergy > 1e-6)
+    %    parent = newparam;
+    %    oldenergy = newenergy;
+    %    success = success+1;
+    %    consec = 0;
+    %else
+    %    if (rand < exp( (oldenergy-newenergy)/(k*T) ));
+    %        parent = newparam;
+    %        oldenergy = newenergy;
+    %        success = success+1;
+    %    else
+    %        consec = consec+1;
+    %    end
+    %end
+    fprintf(1,' old %5.2e accept %5.2e parent =',oldenergy,AcceptanceProbability );
+    fprintf(1,' %5.2e',parent);
     fprintf(1,' success %d consec %d\n',success,consec);
 end
 

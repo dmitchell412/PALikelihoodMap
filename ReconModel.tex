@@ -704,7 +704,70 @@ fiber as well as variations over distinct tissue types.
 approximated as a photon line source above the tissue surface. }
 \end{figure}
 
+Gaussian
+\[
+     \eta \sim \mathcal{N}(\mu,\Sigma)
+    \Rightarrow
+      p(\eta)  = 
+       \frac{1}{\sqrt{ (2 \; \pi)^k \; \det{\Sigma}}} \exp\left( - \frac{1}{2}
+                                                     \| \mu - \eta\|^2_{\Sigma}
+                                             \right)
+\]
+Gaussian Identities
+\[
+\begin{split}
+\exp \left(\ln\left( \frac{1}{\sqrt{ (2 \; \pi)^k \; \det{\Sigma}} } \right)\right)
+ = 
+\exp \left(\ln 1 -\ln\left( \sqrt{ (2 \; \pi)^k \; \det{\Sigma} } \right)\right)
+ = 
+\exp \left( -\frac{1}{2} \ln\left( (2 \; \pi)^k \; \det{\Sigma}  \right)\right)
+\\
+ = 
+\exp \left( -\frac{1}{2} \left(\ln (2 \; \pi)^k + \ln \left(\det{\Sigma} \right) \right)\right)
+ = 
+\exp \left( -\frac{1}{2} \left(k\; \ln (2 \; \pi) + \ln \left(\det{\Sigma} \right) \right)\right)
+\end{split}
+\]
 
+Acceptance probability is of the form
+\[
+ \begin{split}
+\mathcal{A} = \frac{p(\eta_1)}{p(\eta_2)} 
+     &      = \frac{
+       \frac{1}{\sqrt{ (2 \; \pi)^k \; \det{\Sigma}} } \exp\left( - \frac{1}{2}
+                                                     \| \mu - \eta_1\|^2_{\Sigma}
+                                             \right)
+                   }{
+       \frac{1}{\sqrt{ (2 \; \pi)^k \; \det{\Sigma}} } \exp\left( - \frac{1}{2}
+                                                     \| \mu - \eta_2\|^2_{\Sigma}
+                                             \right)
+                   } 
+     \\
+     &      = \frac{
+        \exp\left( - \frac{1}{2} \left(
+           \| \mu - \eta_1\|^2_{\Sigma} + k\; \ln (2 \; \pi) + \ln \det{\Sigma}
+                                             \right) \right)
+                   }{
+        \exp\left( - \frac{1}{2} \left(
+           \| \mu - \eta_2\|^2_{\Sigma} + k\; \ln (2 \; \pi) + \ln \det{\Sigma}
+                                             \right) \right)
+                   } 
+     \\
+     &      = 
+        \exp\left(  \frac{
+      \| \mu - \eta_2\|^2_{\Sigma}  - \| \mu - \eta_1\|^2_{\Sigma} 
+                 }{2}    
+            \right)
+ \end{split}
+\]
+For annealing
+\[
+\mathcal{A} = \frac{p^\frac{1}{T}(\eta_1)}{p^\frac{1}{T}(\eta_2)}  
+            = \exp\left(  \frac{
+      \| \mu - \eta_2\|^2_{\Sigma}  - \| \mu - \eta_1\|^2_{\Sigma} 
+                 }{2\;T}    
+            \right)
+\]
 
 \begin{figure}[h]
 \centering
