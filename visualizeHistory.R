@@ -57,7 +57,7 @@ panel.summarylinear <- function(x, y)
 ## load csv file
 filename <- paste("opthistory", ".csv",sep="")
 cat( filename , "\n" )
-optdata <- read.csv( filename  ,skip=0, col.names=c("phi1","phi2","phi3","phi4","phi5","power","obj"))
+optdata <- read.csv( filename  ,skip=0, col.names=c("phi1","phi2","phi3","phi4","phi5","power","mua","obj"))
 print(head(optdata ,n=40))
 
 ## 
@@ -65,7 +65,7 @@ print(head(optdata ,n=40))
 pdf("OptHistory.pdf")
 do.legend <- TRUE
 
-pairs(~phi1+phi2+phi3+phi4+phi5+power+obj,data=optdata ,
+pairs(~phi1+phi2+phi3+phi4+phi5+obj+power+mua,data=optdata ,
         diag.panel  = panel.summaryhist, 
         lower.panel = panel.summarylinear,
         upper.panel = panel.summarycor,

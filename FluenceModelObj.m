@@ -1,4 +1,4 @@
-function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_materialID,d_PAData,nsource,powerFraction,PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz)
+function ObjectiveFunctionValue = FluenceModelObj(VolumeFraction,ssptx,d_pasource,muaFraction, muaReference,d_materialID,d_PAData,nsource,powerFraction,PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,PlotSolution)
 
 % get power setting
 power = PowerFnc(powerFraction);
@@ -39,6 +39,16 @@ for idwavelength= 1:length(muaHHb)
     [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
     l2distance = norm( d_pasource(:)-d_PAData(:,idwavelength) ) ;
     ObjectiveFunctionValue = ObjectiveFunctionValue + l2distance * l2distance ;
+    if(PlotSolution)
+       h_pasource    = gather(d_pasource );
+       pasolnnii = make_nii(h_pasource,[spacingX,spacingY,spacingZ],[],[],'pasoln');
+       save_nii(pasolnnii,['pasoln.' sprintf('%04d',idwavelength) '.nii.gz']) ;
+       savevtkcmd = ['c3d  pasoln.' sprintf('%04d',idwavelength) '.nii.gz -o pasoln.' sprintf('%04d',idwavelength) '.vtk; sed -i ''s/scalars/pasoln/g'' pasoln.' sprintf('%04d',idwavelength) '.vtk '];
+       [status result] = system(savevtkcmd);
+       %% handle = figure(length(muaHHb)+ idwavelength);
+       %% imagesc(h_pasource(:,:,idslice ),PAPlotRange)
+       %% colorbar
+    end
 end
 %disp([VolumeFraction,power,ObjectiveFunctionValue]);
 
@@ -54,3 +64,16 @@ end
 %        normalize by variance to get acceptance probability
 Variance = 1.e9;
 ObjectiveFunctionValue = 0.5 *ObjectiveFunctionValue/Variance ; 
+
+if(PlotSolution)
+  % plot volume fraction solution
+  VolumeFractionImg = double( gather(d_materialID));
+  ntissue = max(max(max(VolumeFractionImg)));
+  for iii = 1:ntissue
+     VolumeFractionImg(VolumeFractionImg== iii  ) = VolumeFraction(iii);
+  end
+  volumefractionsolnnii = make_nii(VolumeFractionImg,[spacingX,spacingY,spacingZ],[],[],'volumefraction');
+  save_nii(volumefractionsolnnii,'volumefractionsoln.nii.gz') ;
+  savevtkcmd = ['c3d volumefractionsoln.nii.gz -o volumefractionsoln.vtk ; sed -i ''s/scalars/volfrac/g'' volumefractionsoln.vtk '];
+  [status result] = system(savevtkcmd);
+end

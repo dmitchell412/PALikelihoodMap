@@ -47,8 +47,8 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-PowerLB    = .001;
-PowerUB    =  .10;
+PowerLB    = .0001;
+PowerUB    =  .001;
 PowerFnc   = @(x) PowerLB + x * (PowerUB-PowerLB);
 
 %% Query the device
@@ -81,7 +81,7 @@ ssptx.ThreadBlockSize=[threadsPerBlock  1]
 %% create anonymous function
 muaReference     = 3.e1; % [1/m]
 % TODO - change function signature to use struct
-loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,0);
 
 %% % tune kernel
 %% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
@@ -107,7 +107,10 @@ options = anneal();
 options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x)),PowerRange,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
 
 % TODO - use Monte Carlo for now
-options.Generator =  @(x) rand(1,length(x));
+options.Generator = @(x) rand(1,length(x));
+
+% set plotting function
+options.PlotLoss =  @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,1);
 
 % uniformly search parameter space to find good initial guess
 RandomInitialGuess = 10;
@@ -127,34 +130,7 @@ end
 mcmcruntime = toc;
 disp(sprintf('mcmc run time %f',mcmcruntime) );
 
-SolnVector = [ 7.2e-01 9.9e-01 1.9e-01 5.9e-01 7.0e-03 8.9e-02 2.9e-02];
-%f = loss(SolnVector )
+%SolnVector = [ 7.2e-01 9.9e-01 1.9e-01 5.9e-01 7.0e-03 8.9e-02 2.9e-02];
+%f = plotloss(SolnVector )
 
-% plot volume fraction solution
-VolumeFraction = [0,SolnVector(1:length(SolnVector)-2)]; 
-VolumeFractionImg = double( materialID);
-for iii = 1:ntissue
-   VolumeFractionImg(materialID == iii  ) = VolumeFraction(iii);
-end
-volumefractionsolnnii = make_nii(VolumeFractionImg,tumorlabel.hdr.dime.pixdim(2:4),[],[],'volumefraction');
-save_nii(volumefractionsolnnii,'volumefractionsoln.nii.gz') ;
-savevtkcmd = ['c3d volumefractionsoln.nii.gz -o volumefractionsoln.vtk ; sed -i ''s/scalars/volfrac/g'' volumefractionsoln.vtk '];
-[status result] = system(savevtkcmd);
-
-% plot predict PA signal
-power      = PowerFnc(SolnVector(  length(SolnVector) -1 ));
-muaHHb     = SolnVector(  length(SolnVector) )    *muaReference*[ 3.3333,2.6667,2.6667 ,1  , 1.0667,0.66667];% [1/m]
-muaHbO2    = SolnVector(  length(SolnVector) )    *muaReference*[  1    ,1.1667,1.3333 ,1.5, 1.6667,2.0];% [1/m]
-
-for idwavelength= 1:NWavelength
-  [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
-  h_pasource    = gather(d_pasource );
-  pasolnnii = make_nii(h_pasource,tumorlabel.hdr.dime.pixdim(2:4),[],[],'pasoln');
-  save_nii(pasolnnii,['pasoln.' sprintf('%04d',idwavelength) '.nii.gz']) ;
-  savevtkcmd = ['c3d  pasoln.' sprintf('%04d',idwavelength) '.nii.gz -o pasoln.' sprintf('%04d',idwavelength) '.vtk; sed -i ''s/scalars/pasoln/g'' pasoln.' sprintf('%04d',idwavelength) '.vtk '];
-  [status result] = system(savevtkcmd);
-  handle = figure(NWavelength+ idwavelength);
-  imagesc(h_pasource(:,:,idslice ),PAPlotRange)
-  colorbar
-end
 
