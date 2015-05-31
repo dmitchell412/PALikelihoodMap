@@ -75,7 +75,7 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-maxpower      = .01;
+maxpower      = .001;
 
 %% Query the device
 % GPU must be reset on out of bounds errors
@@ -130,9 +130,19 @@ disp('starting solver')
 options = anneal();
 %options.MaxTries = 2;
 %options.MaxConsRej = 1;
+% use least square direction for proposal distribution
+options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+
+
 % uniformly search parameter space to find good initial guess
-options.Generator = @(x) (rand(1,length(x)));
-[SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options);
+RandomInitialGuess = 10;
+RandomInitialGuess = 1;
+for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
+  InitialGuess = rand(1,length(x));
+  [SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options);
+  % TODO store best solution
+end
+
 %SolnVector = [ 6.758e-02,4.987e-01,3.796e-01,1.657e-01,8.022e-01,1.084e-03 ];
 %SolnVector = [ 0.95875  ,  0.77622,0.10041  , 0.067474,0.25271  ,0.0019434 ]; 
 %SolnVector = [ 1.48e-01, 2.95e-02, 1.60e-01, 2.63e-01, 6.43e-01, 1.57e-03 ];
@@ -153,4 +163,5 @@ for idwavelength= 1:NWavelength
   colorbar
 end
 
+% TODO Scatter plot of opthistory
 
