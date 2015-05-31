@@ -1,5 +1,5 @@
 .PHONY: doc rtf
-all: sdaSpectralFluenceModel.ptx
+all: doc
 #
 # file : Makefile (UNIX)
 #
