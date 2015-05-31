@@ -47,8 +47,8 @@ end
 lasersource  = load_untouch_nii('lasersource.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-PowerLB    = .5;
-PowerUB    =  2.0;
+PowerLB    = .001;
+PowerUB    =  .10;
 PowerFnc   = @(x) PowerLB + x * (PowerUB-PowerLB);
 
 %% Query the device
@@ -121,19 +121,13 @@ for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
   %% last entry is percent power
   InitialGuess = [.5*ones(1,ntissue),.6,.9];
 
-  [SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options);
+  [SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
   % TODO store best solution
 end
 mcmcruntime = toc;
 disp(sprintf('mcmc run time %f',mcmcruntime) );
 
-% write optimization history for scatter plot in R
-csvwrite('opthistory.csv',opthistory);
-
-%SolnVector = [ 6.758e-02,4.987e-01,3.796e-01,1.657e-01,8.022e-01,1.084e-03 ];
-%SolnVector = [ 0.95875  ,  0.77622,0.10041  , 0.067474,0.25271  ,0.0019434 ]; 
-%SolnVector = [ 1.48e-01 , 2.95e-02, 1.60e-01, 2.63e-01, 6.43e-01, 1.57e-03 ];
-%SolnVector = [ 0.48858  , 0.25659 , 0.37129 , 0.16478 , 0.02466 , 0.38788  ];
+SolnVector = [ 7.2e-01 9.9e-01 1.9e-01 5.9e-01 7.0e-03 8.9e-02 2.9e-02];
 %f = loss(SolnVector )
 
 % plot volume fraction solution

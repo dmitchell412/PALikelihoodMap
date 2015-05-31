@@ -1,4 +1,4 @@
-function [minimum,fval,OptHistory] = anneal(loss, parent, options)
+function [minimum,fval] = anneal(loss, parent, options)
 % ANNEAL  Minimizes a function with the method of simulated annealing
 % (Kirkpatrick et al., 1983)
 %
@@ -218,6 +218,9 @@ while ~finished;
     fprintf(1,' old %5.2e accept %5.2e parent =',oldenergy,AcceptanceProbability );
     fprintf(1,' %4.1e',parent);
     fprintf(1,' success %d consec %d\n',success,consec);
+
+    % write optimization history for scatter plot in R
+    csvwrite('opthistory.csv',OptHistory );
 end
 
 minimum = parent;
