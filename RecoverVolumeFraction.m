@@ -44,7 +44,8 @@ for idwavelength = 1:NWavelength
 end
 
 %% Get laser source locations
-lasersource  = load_untouch_nii('lasersource.nii.gz');
+%lasersource  = load_untouch_nii('lasersource.nii.gz');
+lasersource  = load_untouch_nii('lasersourcebottom.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
 PowerLB    = .001;
@@ -99,8 +100,8 @@ loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),m
 %% run opt solver
 disp('starting solver')
 options = anneal();
-%options.MaxTries = 2;
-%options.MaxConsRej = 1;
+options.MaxTries = Inf;
+options.MaxConsRej = Inf;
 
 % use least square direction for proposal distribution
 % TODO - debug
@@ -109,6 +110,7 @@ options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource
 
 % TODO - use Monte Carlo for now
 options.Generator = @(x) rand(1,length(x));
+options.Generator = @(x) (x+(randperm(length(x))==length(x))*randn/100)
 
 % set plotting function
 options.PlotLoss =  @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference, d_maskimage, d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,1);
@@ -124,6 +126,7 @@ for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
   %% assume 50/50 volume fraction initially
   %% last entry is percent power
   InitialGuess = [.5*ones(1,ntissue),.6,.9];
+  InitialGuess = [0.80338      0.91354      0.95532      0.93679      0.88591       0.8361      0.91077];
 
   [SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
   % TODO store best solution
@@ -132,4 +135,4 @@ mcmcruntime = toc;
 disp(sprintf('mcmc run time %f',mcmcruntime) );
 
 %SolnVector = [ 7.3e-01 2.3e-01 5.8e-01 8.1e-01 4.0e-01 9.9e-01 9.0e-02 ];
-%f = options.PlotLoss(SolnVector )
+%f = options.PlotLoss(InitialGuess )
