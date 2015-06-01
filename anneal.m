@@ -1,4 +1,4 @@
-function [minimum,fval,OptHistory] = anneal(loss, parent, options)
+function [minimum,fval] = anneal(loss, parent, options)
 % ANNEAL  Minimizes a function with the method of simulated annealing
 % (Kirkpatrick et al., 1983)
 %
@@ -100,6 +100,7 @@ function [minimum,fval,OptHistory] = anneal(loss, parent, options)
 def = struct(...
         'CoolSched',@(T) (.8*T),...
         'Generator',@(x) (x+(randperm(length(x))==length(x))*(rand-.5)/5),...
+        'PlotLoss' ,@(x) disp(' '),...
         'InitTemp',1,...
         'MaxConsRej',1000,...
         'MaxSuccess',20,...
@@ -177,7 +178,7 @@ while ~finished;
     newenergy = loss(newparam);
     OptHistory = [OptHistory;newparam,newenergy];
     fprintf(1,'new %5.2e newparam=',newenergy );
-    fprintf(1,' %5.2e',newparam);
+    fprintf(1,' %4.1e',newparam);
     
     if (newenergy < minF),
         parent = newparam; 
@@ -198,6 +199,8 @@ while ~finished;
         oldenergy = newenergy;
         success = success+1;
         consec = 0;
+        % plot best solution
+        options.PlotLoss(parent);
     else
         consec = consec+1;
     end
@@ -216,8 +219,11 @@ while ~finished;
     %    end
     %end
     fprintf(1,' old %5.2e accept %5.2e parent =',oldenergy,AcceptanceProbability );
-    fprintf(1,' %5.2e',parent);
+    fprintf(1,' %4.1e',parent);
     fprintf(1,' success %d consec %d\n',success,consec);
+
+    % write optimization history for scatter plot in R
+    csvwrite('opthistory.csv',OptHistory );
 end
 
 minimum = parent;

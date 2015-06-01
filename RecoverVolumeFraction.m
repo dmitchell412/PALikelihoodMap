@@ -2,37 +2,9 @@ clear all
 close all
 format shortg
 
-%% mua for each species at each wave length  
-%% TODO - error check same length
+%% Spectral inversion for multiple wavelengths
 WaveLength = [680   , 710   , 750   , 850   , 920  , 950  ];
-muaHHb     = [1.e03 ,8.e02  ,8.e02  ,3.e02  ,3.2e02, 2.e02]; % [1/m]
-muaHbO2    = [3.e02 ,3.5e02 ,4.0e02 ,4.5e02 ,5.e02 , 6.e02]; % [1/m]
-%% @article{wray1988characterization,
-%%   title={Characterization of the near infrared absorption spectra of
-%% cytochrome aa3 and haemoglobin for the non-invasive monitoring of cerebral
-%% oxygenation},
-%%   author={Wray, Susan and Cope, Mark and Delpy, David T and Wyatt, John S
-%% and Reynolds, E Osmund R},
-%%   journal={Biochimica et Biophysica Acta (BBA)-Bioenergetics},
-%%   volume={933},
-%%   number={1},
-%%   pages={184--192},
-%%   year={1988},
-%%   publisher={Elsevier}
-%% }
-%% 
-%% 
-%% @inproceedings{needles2010development,
-%%   title={Development of a combined photoacoustic micro-ultrasound system for
-%% estimating blood oxygenation},
-%%   author={Needles, A and Heinmiller, A and Ephrat, P and Bilan-Tracey, C and
-%% Trujillo, A and Theodoropoulos, C and Hirson, D and Foster, FS},
-%%   booktitle={Ultrasonics Symposium (IUS), 2010 IEEE},
-%%   pages={390--393},
-%%   year={2010},
-%%   organization={IEEE}
-%% }
-NWavelength = length(muaHHb);
+NWavelength = length(WaveLength);
 
 %
 disp('loading GMM tissue types');
@@ -41,7 +13,7 @@ materialID = int32(tumorlabel.img);
 %materialID(materialID == 0  ) = 1;
 
 %% Initial Guess for volume fractions
-ntissue = max(max(max(materialID)));
+ntissue = max(materialID(:));
 
 [npixelx, npixely, npixelz] = size(materialID);
 spacingX = tumorlabel.hdr.dime.pixdim(2)*1.e-3;
@@ -72,10 +44,13 @@ for idwavelength = 1:NWavelength
 end
 
 %% Get laser source locations
-lasersource  = load_untouch_nii('lasersource.nii.gz');
+%lasersource  = load_untouch_nii('lasersource.nii.gz');
+lasersource  = load_untouch_nii('lasersourcebottom.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
-maxpower      = .001;
+PowerLB    = .001;
+PowerUB    =  .01;
+PowerFnc   = @(x) PowerLB + x * (PowerUB-PowerLB);
 
 %% Query the device
 % GPU must be reset on out of bounds errors
@@ -90,9 +65,10 @@ h_pasource   = zeros(npixelx,npixely,npixelz);
 d_pasource   = gpuArray( h_pasource  );
 d_PAData     = gpuArray( h_PAData    );
 d_materialID = gpuArray( materialID  );
-d_xloc     = gpuArray(1.e-3+ spacingX* rows );
-d_yloc     = gpuArray(1.e-3+ spacingY* cols );
-d_zloc     = gpuArray(1.e-3+ spacingZ* depth); 
+d_maskimage  = gpuArray( maskimage   );
+d_xloc       = gpuArray(1.e-3+ spacingX* rows );
+d_yloc       = gpuArray(1.e-3+ spacingY* cols );
+d_zloc       = gpuArray(1.e-3+ spacingZ* depth); 
 transfertime = toc;
 disp(sprintf('transfer time to device %f',transfertime));
 
@@ -104,14 +80,10 @@ ssptx.GridSize =[numSMs*8 1];
 threadsPerBlock= 768;
 ssptx.ThreadBlockSize=[threadsPerBlock  1]
 
-%% initial guess
-%% materialID[0] not used
-%% assume 50/50 volume fraction initially
-%% last entry is percent power
-InitialGuess = [.5*ones(ntissue,1);.6]';
-
 %% create anonymous function
-loss = @(x) FluenceModelObj([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+muaReference     = 3.e-4; % [1/m]
+% TODO - change function signature to use struct
+loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_maskimage,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,0);
 
 %% % tune kernel
 %% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
@@ -128,40 +100,41 @@ loss = @(x) FluenceModelObj([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO
 %% run opt solver
 disp('starting solver')
 options = anneal();
-%options.MaxTries = 2;
-%options.MaxConsRej = 1;
-% use least square direction for proposal distribution
-options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x))*maxpower,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+options.MaxTries = Inf;
+options.MaxConsRej = Inf;
+options.StopTemp   = 1e-12;
 
+% use least square direction for proposal distribution
+% TODO - debug
+% TODO - change function signature to use struct
+options.Generator =  @(x) StochasticNewton([0,x(1:length(x)-1)],ssptx,d_pasource,muaHHb, muaHbO2,d_materialID,d_PAData,nsource,x(length(x)),PowerRange,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
+
+% TODO - use Monte Carlo for now
+options.Generator = @(x) rand(1,length(x));
+options.Generator = @(x) (x+(randperm(length(x))==length(x))*randn/100);
+
+% set plotting function
+options.PlotLoss =  @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference, d_maskimage, d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,1);
 
 % uniformly search parameter space to find good initial guess
 RandomInitialGuess = 10;
 RandomInitialGuess = 1;
+tic;
 for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
-  InitialGuess = rand(1,length(x));
-  [SolnVector FunctionValue opthistory] = anneal(loss,InitialGuess,options);
+
+  %% initial guess
+  %% materialID[0] not used
+  %% assume 50/50 volume fraction initially
+  %% last entry is percent power
+  InitialGuess = [.5*ones(1,ntissue),.6,.9];
+  InitialGuess = [0.80338    0.91354      0.95532      0.93679      0.88591       0.8361      0.91077];
+
+  %[SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
   % TODO store best solution
 end
+mcmcruntime = toc;
+disp(sprintf('mcmc run time %f',mcmcruntime) );
 
-%SolnVector = [ 6.758e-02,4.987e-01,3.796e-01,1.657e-01,8.022e-01,1.084e-03 ];
-%SolnVector = [ 0.95875  ,  0.77622,0.10041  , 0.067474,0.25271  ,0.0019434 ]; 
-%SolnVector = [ 1.48e-01, 2.95e-02, 1.60e-01, 2.63e-01, 6.43e-01, 1.57e-03 ];
-%f = loss(SolnVector )
-
-% plot
-VolumeFraction = [0,SolnVector(1:length(SolnVector)-1)]; 
-power          =    SolnVector(  length(SolnVector)) * maxpower;
-for idwavelength= 1:NWavelength
-  [d_pasource ] = feval(ssptx,d_materialID,VolumeFraction, muaHHb(idwavelength),muaHbO2(idwavelength), nsource, power ,d_xloc,d_yloc,d_zloc, d_pasource,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz);
-  h_pasource    = gather(d_pasource );
-  pasolnnii = make_nii(h_pasource,tumorlabel.hdr.dime.pixdim(2:4),[],[],'pasoln');
-  save_nii(pasolnnii,['pasoln.' sprintf('%04d',idwavelength) '.nii.gz']) ;
-  savevtkcmd = ['c3d  pasoln.' sprintf('%04d',idwavelength) '.nii.gz -o pasoln.' sprintf('%04d',idwavelength) '.vtk; sed -i ''s/scalars/pasoln/g'' pasoln.' sprintf('%04d',idwavelength) '.vtk '];
-  [status result] = system(savevtkcmd);
-  handle = figure(NWavelength+ idwavelength);
-  imagesc(h_pasource(:,:,idslice ),PAPlotRange)
-  colorbar
-end
-
-% TODO Scatter plot of opthistory
-
+%SolnVector = [ 7.3e-01 2.3e-01 5.8e-01 8.1e-01 4.0e-01 9.9e-01 9.0e-02 ];
+InitialGuess = [0.94868    0.96991      0.97169      0.98046       0.9873        2.913      0.39144];
+f = options.PlotLoss(InitialGuess )
