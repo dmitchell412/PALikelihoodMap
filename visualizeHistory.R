@@ -21,10 +21,10 @@ panel.summaryhist <- function(x, ...)
     stdtxt <- paste("std=", format( sd(x)     , digits = localdigits ))
     mintxt <- paste("min=", format( min(x)    , digits = localdigits ))
     maxtxt <- paste("max=", format( max(x)    , digits = localdigits ))
-    text(meanvalue , 1.2, mintxt )
-    text(meanvalue , 1.4, avgtxt )
+    #text(meanvalue , 1.2, mintxt )
+    text(meanvalue , 1.2, avgtxt )
     text(meanvalue , 1.6, stdtxt )
-    text(meanvalue , 1.8, maxtxt )
+    #text(meanvalue , 1.8, maxtxt )
     #if (do.legend) legend(43,2.5,c("GR","S2"), col = c(1,3), pch = c(1,3), bg="white")
     do.legend <<- FALSE
   
@@ -41,7 +41,7 @@ panel.summarycor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
     if(cor(x, y) >= 0.0) txt <- paste("cor=" , txt)
     if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
     #text(0.5, 0.5, txt, cex = cex.cor * r)
-    text(0.5, 0.5, txt, cex = 3.0* r)
+    text(0.5, 0.5, txt, cex = 1.)
 }
 
 # lexical scope on color code and symbol code
