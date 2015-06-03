@@ -97,6 +97,28 @@ loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),m
 %% end
 %% end
 
+
+%% % Plot Runtimes 
+%% NRuns = 100;
+%% runtimes = zeros(NRuns,1);
+%% tic;
+%% InitialGuess = [0.94868    0.96991      0.97169      0.98046       0.9873        2.913      0.39144];
+%% for iii = 1:NRuns
+%%   f = loss(InitialGuess);
+%%   runtimes(iii) = toc;
+%%   disp(sprintf('%d %12.5e',iii,runtimes(iii)));
+%% end
+%% handleRuntime = figure(2*NWavelength+2);
+%% plot([1:NRuns],runtimes)
+%% set(gca,'FontSize',16)
+%% xlabel('# of Function Evaluations')
+%% ylabel('Run time [s]')
+%% grid on
+%% legend('464x512x24 3D image' ,'Location','NorthWest')
+%% text(10,240,'GTX Titan - 2688 Cuda Cores - 4.5 Peak Teraflops')
+%% saveas(handleRuntime,'Runtimes','png')
+
+
 %% run opt solver
 disp('starting solver')
 options = anneal();
