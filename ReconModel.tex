@@ -63,6 +63,9 @@
 \maketitle
 
 
+
+
+
 The presence of deoxyhemoglobin PA signal provides a biomarker for locating
 aggressive prostate cancer.  Spectral unmixing to differentiate deoxy- (HHb)
 and oxyhemoglobin (HbO2) PA signal is achieved using inverse analysis
@@ -781,6 +784,25 @@ to the proposal distribution~\cite{martin2012stochastic}.
 \]
 
 
+{
+\color{red}
+
+To demonstrate ex vivo application of PA imaging driven with interstitial
+irradiation, excised bovine prostate tissue was encased in gelatin, and then
+injected with gold nanospheres (AuNS’s) to provide an imaging target (Fig.
+5.a,b). After injection, a side-fire irradiation fiber was inserted into the
+phantom and used to generate PA images of the prostate in both
+AuNS-containing regions (black/green oval) and non-injected control regions
+(white oval). sPA imaging was then performed at wavelengths between 720 and
+900 nm and analyzed to determine the PA spectra (which is related to the
+optical absorption spectrum) of the imaging targets (Fig. 5.c). The PA
+spectrum in the region injected with AuNS’s (black trace in Fig. 5.c) peaked
+at 760 nm, which is consistent with their optical absorption spectrum (Fig
+5.d). However, in the non-injected control region, the PA signal spectrum
+(blue trace in Fig. 5.c) was consistent with the optical absorption spectrum
+of deoxyhemoglobin (blue trace in 3.a).
+
+}
 
 \begin{figure}[h]
 \centering
@@ -793,19 +815,52 @@ Wavelength dependence~\cite{wray1988characterization,needles2010development}.
 } \label{WavelengthDepdendence}
 \end{figure}
 
-\begin{figure}[h]
-\centering
-\scalebox{0.47}{\includegraphics{\picdir/OptHistory}} 
-\caption{
-Optimization History
-} \label{Optimization History}
-\end{figure}
 
 \begin{figure}[h]
 \centering
-\scalebox{0.47}{\includegraphics{\picdir/solutioncomparison.png}} 
+\begin{tabular}{ccc}
+\scalebox{0.17}{\includegraphics{\picdir/solutioncomparison.png}} 
+\scalebox{0.17}{\includegraphics{\picdir/OptHistory}} 
+\scalebox{0.17}{\includegraphics{\picdir/Runtimes.png}} 
+\end{tabular}
 \caption{
-Solution comparison.
+Figure PrelimInverseResults. Preliminary results demonstrating feasibility
+of the proposed oxygen saturation detection based on spectral unmixing are
+shown. (a) The fluence model that provides the photoacoustic source is
+determined by spatially heterogeneous optical parameters of the tissue
+(Fuentes 2013 [46]). Multiple wavelengths (680, 710 750, 850, 920, 950nm) of
+photoacoustic data are used within an inverse problem formulation to recover
+the volume fraction of deoxy- (HHb) and oxyhemoglobin (HbO2) that
+characterizes the oxygen saturation state of the tissue. (b) The model
+prediction is shown adjacent to the experimental photoacoustic data at a
+single wavelength (950nm) for comparison. (c) The inverse problem recovery
+of the heterogeneous oxygenation state of the tissue is shown. For this
+particular case, deoxyhemoglobin (HHb) was the dominant species detected.
+Blood phantom experiments to validate this quantitative technique for
+detection of the oxygenation state is discussed further in Section XXX. (d)
+The ‘white line’ graphically shown in (a-c) is plotted as a line profile of
+fluence source versus distance for further quantitative comparison. Current
+implementations of the mathematical phantom are able to capture the overall
+trend of the fluence decay. (e) The corresponding line profile of the volume
+fraction of HHb to HbO2 is shown. Volume fractions of 0 and 1 represents
+HbO2 and HHb; respectively. (f) Markov Chain Monte Carlo (MCMC) algorithms
+have been implemented to solve the inverse problem. The exploration of the
+5D solution space for the oxygenation state of the tissue is shown. The
+current MCMC method required 7254 function evaluations to reach the inverse
+problem solution shown. Proposed efforts will improve upon the MCMC solution
+technique to include derivative information of the model with respect to
+optical properties and is discussed in Section Research Strategy. Stochastic
+Newton methods will enable a faster and more accurate convergence to an
+inverse solution. The used of derivative information has been shown to
+converge to a solution in approximately 20 function evaluations (Fuentes
+2010 [47]). (g) The current ‘time to solution’ for the inverse problem is
+determined by the number of function evaluations that measures the distance
+between model prediction and photoacoustic measurement. Quantitative run
+time measurements for current GPU implementations of the fluence model
+average between .5-1.0 seconds for a function evaluation (1cmx1cm FOV) on an
+Nvidia GTX Titan with 2688 Cuda cores. Anticipating 20 function evaluations
+to converge to a solution, reconstruction of the oxygenation state of the
+tissue may be achieved in less than 20 seconds.
 } \label{SolutionComparison}
 \end{figure}
 %% {
