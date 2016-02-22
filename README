@@ -1,6 +1,12 @@
-
 Usage
 =====
+
+ * convertNiftiPhantom.m convert data to nifti format and create initial segmenations
+        - anatomy: PhantomBmode.nii.gz 
+        - pa data: PhantomPadata.%04d.nii.gz
+        - initial labels: Phantom_ATROPOS_GMM.%04d.nii.gz
+
+
 $ make
 /opt/apps/cuda/5.5//bin/nvcc -g -G -ptx -gencode=arch=compute_20,code=sm_20   steadyStatePennesLaser.cu
 

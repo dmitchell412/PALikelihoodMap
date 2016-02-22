@@ -4,11 +4,14 @@ format shortg
 
 %% Spectral inversion for multiple wavelengths
 WaveLength = [680   , 710   , 750   , 850   , 920  , 950  ];
+WaveLength =  [720 730 750 760 780 800 850 900];
 NWavelength = length(WaveLength);
 
 %
 disp('loading GMM tissue types');
-tumorlabel  = load_untouch_nii('tumor_ATROPOS_GMM.nii.gz');
+tumorlabel  = load_untouch_nii('Phantom_ATROPOS_GMM.0001.nii.gz');
+%tumorlabel  = load_untouch_nii('Phantom_ATROPOS_GMM.nii.gz');
+
 materialID = int32(tumorlabel.img);
 %materialID(materialID == 0  ) = 1;
 
@@ -20,13 +23,13 @@ spacingX = tumorlabel.hdr.dime.pixdim(2)*1.e-3;
 spacingY = tumorlabel.hdr.dime.pixdim(3)*1.e-3;
 spacingZ = tumorlabel.hdr.dime.pixdim(4)*1.e-3;
 
-idslice = 11;
+idslice = 1;
 handle1 = figure(2*NWavelength+1);
 imagesc(materialID(:,:,idslice ),[0 5])
 colorbar
 
 %% load tumor mask
-tumormask =load_untouch_nii('tumormask.nii.gz');
+tumormask =load_untouch_nii('PhantomMask.nii.gz');
 maskimage = double(tumormask.img);
 
 PAPlotRange = [0 300];
@@ -45,7 +48,7 @@ end
 
 %% Get laser source locations
 %lasersource  = load_untouch_nii('lasersource.nii.gz');
-lasersource  = load_untouch_nii('lasersourcebottom.nii.gz');
+lasersource  = load_untouch_nii('PhantomLaserVesselSetup.nii.gz');
 [rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
 nsource    = length(rows);
 PowerLB    = .001;
