@@ -2,6 +2,12 @@ clear all
 close all
 format shortg
 
+%% input files
+labelfilename = 'Phantom_ATROPOS_GMM.0001.nii.gz'; % initial tissue segmentation
+maskfilename  = 'PhantomMask.nii.gz'; % ROI
+pafilebase    = 'PhantomPadata'; % PA Data at each wavelength
+setupfilename = 'PhantomLaserVesselSetup.nii.gz'; % laser location
+
 %% Spectral inversion for multiple wavelengths
 WaveLength = [680   , 710   , 750   , 850   , 920  , 950  ];
 WaveLength =  [720 730 750 760 780 800 850 900];
@@ -9,10 +15,16 @@ NWavelength = length(WaveLength);
 
 %
 disp('loading GMM tissue types');
-tumorlabel  = load_untouch_nii('Phantom_ATROPOS_GMM.0001.nii.gz');
-%tumorlabel  = load_untouch_nii('Phantom_ATROPOS_GMM.nii.gz');
+tumorlabel  = load_untouch_nii(labelfilename );
 
 materialID = int32(tumorlabel.img);
+if (size(materialID ,3) == 1) % store 2d image twice 
+   force3d = zeros (size(materialID ,1), size(materialID ,2), 2,'int32');
+   force3d(:,:,1) = materialID;
+   force3d(:,:,2) = materialID;
+   materialID = force3d;
+end
+
 %materialID(materialID == 0  ) = 1;
 
 %% Initial Guess for volume fractions
@@ -29,27 +41,47 @@ imagesc(materialID(:,:,idslice ),[0 5])
 colorbar
 
 %% load tumor mask
-tumormask =load_untouch_nii('PhantomMask.nii.gz');
+tumormask =load_untouch_nii(maskfilename);
 maskimage = double(tumormask.img);
+if (size(maskimage,3) == 1) % store 2d image twice 
+   force3d = zeros (size(maskimage ,1), size(maskimage ,2), 2);
+   force3d(:,:,1) = maskimage;
+   force3d(:,:,2) = maskimage;
+   maskimage = force3d;
+end
 
 PAPlotRange = [0 300];
 % load data
 disp('loading PA data');
 h_PAData = zeros(npixelx* npixely* npixelz,NWavelength);  
 for idwavelength = 1:NWavelength
-  padatanii = load_untouch_nii(['padata.' sprintf('%04d',idwavelength) '.nii.gz']) ;
+  padatanii = load_untouch_nii([pafilebase '.' sprintf('%04d',idwavelength) '.nii.gz']) ;
+  paimage   = double(padatanii.img);
+  if (size(paimage,3) == 1) % store 2d image twice 
+     force3d = zeros (size(paimage ,1), size(paimage ,2), 2);
+     force3d(:,:,1) = paimage;
+     force3d(:,:,2) = paimage;
+     paimage = force3d;
+  end
+
   % view data
   handle = figure(idwavelength);
-  imagesc(maskimage(:,:,idslice).*padatanii.img(:,:,idslice ),PAPlotRange )
+  imagesc(maskimage(:,:,idslice).*paimage(:,:,idslice ),PAPlotRange )
   colorbar
   % store data array
-  h_PAData(:,idwavelength) = maskimage(:).*padatanii.img(:) ;
+  h_PAData(:,idwavelength) = maskimage(:).*paimage(:) ;
 end
 
 %% Get laser source locations
-%lasersource  = load_untouch_nii('lasersource.nii.gz');
-lasersource  = load_untouch_nii('PhantomLaserVesselSetup.nii.gz');
-[rows,cols,depth] = ind2sub(size(lasersource.img),find(lasersource.img));
+lasersource  = load_untouch_nii(setupfilename );
+sourceimage  = double(lasersource.img);
+if (size(sourceimage,3) == 1) % store 2d image twice 
+   force3d = zeros (size(sourceimage ,1), size(sourceimage ,2), 2);
+   force3d(:,:,1) = sourceimage;
+   force3d(:,:,2) = sourceimage;
+   sourceimage = force3d;
+end
+[rows,cols,depth] = ind2sub(size(sourceimage),find(sourceimage));
 nsource    = length(rows);
 PowerLB    = .001;
 PowerUB    =  .01;
