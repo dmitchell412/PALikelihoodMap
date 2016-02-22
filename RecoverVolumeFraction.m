@@ -38,6 +38,13 @@ handle1 = figure(2*NWavelength+1);
 imagesc(materialID(:,:,idslice ),[0 5])
 colorbar
 
+%% Create distance map for each tissue type
+labelbase = strsplit(labelfilename,'.');
+for iii = 1:ntissue
+    distancecmd = ['/opt/apps/ANTsR/dev//ANTsR_src/ANTsR/src/ANTS/ANTS-build//bin/ImageMath 3' sprintf(' %s.Distance%04d.nii.gz MaurerDistance %s %d',char(labelbase(1)), iii,labelfilename, iii)];
+    disp(distancecmd );
+end
+
 %% load tumor mask
 tumormask =load_untouch_nii(maskfilename);
 maskimage = double(tumormask.img);
