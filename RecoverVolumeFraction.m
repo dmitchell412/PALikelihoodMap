@@ -1,19 +1,19 @@
+%% Spectral inversion for multiple wavelengths
 clear all
 close all
 format shortg
 
-%% input files
+WaveLength = [680   , 710   , 750   , 850   , 920  , 950  ];
+WaveLength =  [720 730 750 760 780 800 850 900];
+NWavelength = length(WaveLength);
+
+%% Input files
 labelfilename = 'Phantom_ATROPOS_GMM.0001.nii.gz'; % initial tissue segmentation
 maskfilename  = 'PhantomMask.nii.gz'; % ROI
 pafilebase    = 'PhantomPadata'; % PA Data at each wavelength
 setupfilename = 'PhantomLaserVesselSetup.nii.gz'; % laser location
 
-%% Spectral inversion for multiple wavelengths
-WaveLength = [680   , 710   , 750   , 850   , 920  , 950  ];
-WaveLength =  [720 730 750 760 780 800 850 900];
-NWavelength = length(WaveLength);
-
-%
+%% Loading tissue types
 disp('loading GMM tissue types');
 tumorlabel  = load_untouch_nii(labelfilename );
 
@@ -24,8 +24,6 @@ if (size(materialID ,3) == 1) % store 2d image twice
    force3d(:,:,2) = materialID;
    materialID = force3d;
 end
-
-%materialID(materialID == 0  ) = 1;
 
 %% Initial Guess for volume fractions
 ntissue = max(materialID(:));
@@ -57,6 +55,7 @@ h_PAData = zeros(npixelx* npixely* npixelz,NWavelength);
 for idwavelength = 1:NWavelength
   padatanii = load_untouch_nii([pafilebase '.' sprintf('%04d',idwavelength) '.nii.gz']) ;
   paimage   = double(padatanii.img);
+  paimage(isnan(paimage))=0;
   if (size(paimage,3) == 1) % store 2d image twice 
      force3d = zeros (size(paimage ,1), size(paimage ,2), 2);
      force3d(:,:,1) = paimage;
@@ -120,38 +119,38 @@ muaReference     = 3.e-4; % [1/m]
 % TODO - change function signature to use struct
 loss = @(x) FluenceModelObj([0,x(1:length(x)-2)],ssptx,d_pasource,x(length(x)),muaReference,d_maskimage,d_materialID,d_PAData,nsource,x(length(x)-1),PowerFnc,d_xloc,d_yloc,d_zloc,spacingX,spacingY,spacingZ,npixelx,npixely,npixelz,0);
 
-%% % tune kernel
-%% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
-%% for threadsPerBlock = [128,256,512,768];
-%%   ssptx.GridSize=[blockpergrid 1];
-%%   ssptx.ThreadBlockSize=[threadsPerBlock  1];
-%%   tic;
-%%   f = loss(InitialGuess)
-%%   kernelruntime = toc;
-%%   disp(sprintf('blockpergrid=%d  threadsPerBlock=%d runtime=%f',blockpergrid,threadsPerBlock,kernelruntime));
-%% end
-%% end
+% % tune kernel
+% for blockpergrid = [numSMs*8,numSMs*16,numSMs*32,numSMs*48,numSMs*64];
+% for threadsPerBlock = [128,256,512,768];
+%   ssptx.GridSize=[blockpergrid 1];
+%   ssptx.ThreadBlockSize=[threadsPerBlock  1];
+%   tic;
+%   f = loss(InitialGuess)
+%   kernelruntime = toc;
+%   disp(sprintf('blockpergrid=%d  threadsPerBlock=%d runtime=%f',blockpergrid,threadsPerBlock,kernelruntime));
+% end
+% end
 
 
-%% % Plot Runtimes 
-%% NRuns = 100;
-%% runtimes = zeros(NRuns,1);
-%% tic;
-%% InitialGuess = [0.94868    0.96991      0.97169      0.98046       0.9873        2.913      0.39144];
-%% for iii = 1:NRuns
-%%   f = loss(InitialGuess);
-%%   runtimes(iii) = toc;
-%%   disp(sprintf('%d %12.5e',iii,runtimes(iii)));
-%% end
-%% handleRuntime = figure(2*NWavelength+2);
-%% plot([1:NRuns],runtimes)
-%% set(gca,'FontSize',16)
-%% xlabel('# of Function Evaluations')
-%% ylabel('Run time [s]')
-%% grid on
-%% legend('464x512x24 3D image' ,'Location','NorthWest')
-%% text(10,240,'GTX Titan - 2688 Cuda Cores - 4.5 Peak Teraflops')
-%% saveas(handleRuntime,'Runtimes','png')
+% % Plot Runtimes 
+% NRuns = 100;
+% runtimes = zeros(NRuns,1);
+% tic;
+% InitialGuess = [0.94868    0.96991      0.97169      0.98046       0.9873        2.913      0.39144];
+% for iii = 1:NRuns
+%   f = loss(InitialGuess);
+%   runtimes(iii) = toc;
+%   disp(sprintf('%d %12.5e',iii,runtimes(iii)));
+% end
+% handleRuntime = figure(2*NWavelength+2);
+% plot([1:NRuns],runtimes)
+% set(gca,'FontSize',16)
+% xlabel('# of Function Evaluations')
+% ylabel('Run time [s]')
+% grid on
+% legend('464x512x24 3D image' ,'Location','NorthWest')
+% text(10,240,'GTX Titan - 2688 Cuda Cores - 4.5 Peak Teraflops')
+% saveas(handleRuntime,'Runtimes','png')
 
 
 %% run opt solver
@@ -183,15 +182,15 @@ for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
   %% materialID[0] not used
   %% assume 50/50 volume fraction initially
   %% last entry is percent power
-  InitialGuess = [.5*ones(1,ntissue),.6,.9];
   InitialGuess = [0.80338    0.91354      0.95532      0.93679      0.88591       0.8361      0.91077];
+  InitialGuess = [.5*ones(1,ntissue),.6,.9];
 
-  %[SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
+  %SolnVector   = InitialGuess;
+  [SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
   % TODO store best solution
 end
 mcmcruntime = toc;
 disp(sprintf('mcmc run time %f',mcmcruntime) );
 
-%SolnVector = [ 7.3e-01 2.3e-01 5.8e-01 8.1e-01 4.0e-01 9.9e-01 9.0e-02 ];
-InitialGuess = [0.94868    0.96991      0.97169      0.98046       0.9873        2.913      0.39144];
-f = options.PlotLoss(InitialGuess )
+%% Plot Solution
+f = options.PlotLoss(SolnVector)
