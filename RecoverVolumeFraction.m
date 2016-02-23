@@ -185,15 +185,17 @@ RandomInitialGuess = 1;
 tic;
 for iii = 1:RandomInitialGuess  % embarrasingly parallel on initial guess
 
-  %% initial guess
-  %% materialID[0] not used
-  %% assume 50/50 volume fraction initially
-  %% last entry is percent power
+  % initial guess
+  % materialID[0] not used
+  % assume 50/50 volume fraction initially
+  % last entry is percent power
   InitialGuess = [0.80338    0.91354      0.95532      0.93679      0.88591       0.8361      0.91077];
   InitialGuess = [.5*ones(1,ntissue),.6,.9];
+  InitialGuess = [0.26718     0.2966       1.1601       2.2722       2.7978       3.2448       3.4934];
 
-  %SolnVector   = InitialGuess;
-  [SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
+  SolnVector   = InitialGuess;
+  % uncomment to run optimizer
+  %[SolnVector FunctionValue ] = anneal(loss,InitialGuess,options);
   % TODO store best solution
 end
 mcmcruntime = toc;
