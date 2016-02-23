@@ -1,15 +1,14 @@
-
-clear all;
+%% Driver routine for PA source model
+clear all
 close all
 
-%% Input
-npixel =256;
 
-% absorption image , scattering parameter, and anisotropy
+% example absorption image , scattering parameter, and anisotropy
+npixel =256;
 muaimage = 500* rand(npixel ,npixel ); %1/m
 mus = 14000; % 1/m
 anistropy = .9; % dimensionless
-spacing = [.004  .004 1] ; % m 
+spacing = [.004  .004 .001] ; % m 
 mutr  = muaimage + mus * (1.0 - anistropy );
 mueffimage = sqrt(3.0 * mutr * muaimage);
 mueffimage(1:100,:) = 0.0;
@@ -42,11 +41,12 @@ ssptx.GridSize =[numSMs*8 1];
 threadsPerBlock= 768;
 ssptx.ThreadBlockSize=[threadsPerBlock  1]
 
+
+%% PA signal =  fluence x mua
 % relative fluence power
 Power = 1.0;
-
-% pasignal =  fluence x mua
 pasignalimage = PaSignal(ssptx,mueffimage ,spacing,Power, roimask);
+max(max(pasignalimage ))
 handle3 = figure(3);
-imagesc(pasignalimage ,[0 1])
+imagesc(log(pasignalimage))
 colorbar
